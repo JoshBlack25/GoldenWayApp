@@ -200,8 +200,13 @@ export async function fetchBuses() {
   return data || [];
 }
 
-export const startRun = (routeCode, busId, direction) =>
-  rpc("start_run", { p_route_code: routeCode, p_bus_id: busId, p_direction: direction || "OUTBOUND" });
+export const startRun = (routeCode, busId, direction, note = null) =>
+  rpc("start_run", {
+    p_route_code: routeCode,
+    p_bus_id: busId,
+    p_direction: direction || "OUTBOUND",
+    p_note: note,
+  });
 
 export const reportRunStatus = (runId, status, delayMinutes = 0, note = null) =>
   rpc("report_run_status", {
