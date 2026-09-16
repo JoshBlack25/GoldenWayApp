@@ -125,6 +125,7 @@ export async function loginAny(email, password) {
         firstName: profile.firstName,
         surname: profile.surname,
         email: profile.email,
+        phone: profile.phone ?? null,
       },
     };
   }
