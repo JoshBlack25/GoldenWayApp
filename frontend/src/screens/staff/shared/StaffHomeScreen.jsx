@@ -8,11 +8,10 @@ import {
   fetchAgentsOnline,
   fetchMyRuns,
   fetchRecentInspections,
-  fetchKioskSalesSummary,
-  fetchPendingConcessions,
   fetchStaffTeam,
 } from "../../../api/operations";
 import { fetchStaffRequests } from "../../../api/staff";
+import ClerkHomeScreen from "../clerk/ClerkHomeScreen";
 
 /**
  * Staff dashboard landing — mobile dashboard principles applied:
@@ -28,7 +27,6 @@ import { fetchStaffRequests } from "../../../api/staff";
  */
 const ROLE_BLURB = {
   ADMIN: "Runs the network: people, prices, timetables and alerts.",
-  CLERK: "The kiosk counter: cards, cash loads and concession checks.",
   INSPECTOR: "Revenue protection: verify cards on board (BR-08).",
   DRIVER: "The road: run your route and keep commuters informed.",
   AGENT: "The voice: help commuters get where they're going.",
@@ -37,6 +35,9 @@ const ROLE_BLURB = {
 export default function StaffHomeScreen() {
   const { user } = useAuth();
   const role = user?.role || "STAFF";
+
+  if (role === "CLERK") return <ClerkHomeScreen />;
+
   const tabs = tabsForRole(role).filter((t) => t.to !== "/staff");
 
   return (
@@ -76,13 +77,6 @@ export default function StaffHomeScreen() {
           );
         })}
       </motion.div>
-
-      <p className="mt-8 text-[12px] text-ink-900/50">
-        Commuter app?{" "}
-        <Link to="/home" className="underline underline-offset-2 hover:text-gold-700">
-          Open GoldenWay
-        </Link>
-      </p>
     </div>
   );
 }
@@ -99,8 +93,6 @@ function HeroKpi({ role }) {
       return <DriverHero />;
     case "INSPECTOR":
       return <InspectorHero />;
-    case "CLERK":
-      return <ClerkHero />;
     case "ADMIN":
       return <AdminHero />;
     default:
@@ -145,7 +137,7 @@ function MetricChipRow({ items }) {
             className="min-h-[64px] rounded-2xl border border-ink-900/10 bg-white px-4 py-3 flex flex-col justify-center active:scale-[0.98] transition-transform hover:border-gold-400/60"
           >
             <p className="font-display text-[18px] font-bold text-ink-900 leading-none">
-              {loading ? "…" : value}
+              {loading ? "..." : value}
             </p>
             <p className="text-[9.5px] font-bold tracking-[0.12em] text-ink-900/40 mt-1.5">{label}</p>
           </Link>
@@ -178,16 +170,16 @@ function AgentHero() {
     <>
       <HeroCard
         chip="OPEN TICKETS"
-        value={openCount ?? "…"}
-        label={openCount === 0 ? "Queue clear — nice work" : oldest ? `Next up: “${oldest.subject}”` : "Loading queue"}
+        value={openCount ?? "..."}
+        label={openCount === 0 ? "Queue clear — nice work" : oldest ? `Next up: "${oldest.subject}"` : "Loading queue"}
         sub={openCount > 0 ? "Tap to claim the next commuter" : null}
         to="/staff/inbox"
         tone={openCount > 3 ? "red" : openCount === 0 ? "emerald" : "gold"}
       />
       <MetricChipRow
         items={[
-          { label: "AGENTS ONLINE", value: state.online ?? "…", to: "/staff/inbox" },
-          { label: "IN PROGRESS", value: state.queue?.filter((t) => t.status === "IN_PROGRESS").length ?? "…", to: "/staff/inbox" },
+          { label: "AGENTS ONLINE", value: state.online ?? "...", to: "/staff/inbox" },
+          { label: "IN PROGRESS", value: state.queue?.filter((t) => t.status === "IN_PROGRESS").length ?? "...", to: "/staff/inbox" },
         ]}
       />
     </>
@@ -223,8 +215,8 @@ function DriverHero() {
       />
       <MetricChipRow
         items={[
-          { label: "RUNS TODAY", value: todayCount ?? "…", to: "/staff/runs" },
-          { label: "RECENT RUNS", value: runs?.length ?? "…", to: "/staff/runs" },
+          { label: "RUNS TODAY", value: todayCount ?? "...", to: "/staff/runs" },
+          { label: "RECENT RUNS", value: runs?.length ?? "...", to: "/staff/runs" },
         ]}
       />
     </>
@@ -251,7 +243,7 @@ function InspectorHero() {
     <>
       <HeroCard
         chip="INSPECTIONS TODAY"
-        value={inspections ? todayRows.length : "…"}
+        value={inspections ? todayRows.length : "..."}
         label={invalid > 0 ? `${invalid} flagged card${invalid === 1 ? "" : "s"} on board` : "All cards checked were valid"}
         sub="Tap to verify a card"
         to="/staff/verify"
@@ -259,44 +251,8 @@ function InspectorHero() {
       />
       <MetricChipRow
         items={[
-          { label: "RECENT LOOKUPS", value: inspections?.length ?? "…", to: "/staff/verify" },
-          { label: "FLAGGED (ALL)", value: inspections?.filter((r) => (r.outcome || "").toUpperCase() !== "VALID").length ?? "…", to: "/staff/verify" },
-        ]}
-      />
-    </>
-  );
-}
-
-/* --- CLERK: today's cash is the hero (K1) --- */
-function ClerkHero() {
-  const [sales, setSales] = useState(null);
-  const [queue, setQueue] = useState(null);
-  useEffect(() => {
-    let live = true;
-    Promise.allSettled([fetchKioskSalesSummary(), fetchPendingConcessions()])
-      .then(([s, q]) => {
-        if (!live) return;
-        if (s.status === "fulfilled") setSales(s.value);
-        if (q.status === "fulfilled") setQueue(q.value.length);
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  return (
-    <>
-      <HeroCard
-        chip="CASH TODAY"
-        value={sales ? `R${(sales.cents / 100).toFixed(2)}` : "…"}
-        label={sales ? `${sales.orders} load${sales.orders === 1 ? "" : "s"} + ${sales.fees} card fee${sales.fees === 1 ? "" : "s"}` : "Counting the drawer"}
-        sub="Tap to open the kiosk"
-        to="/staff/kiosk"
-      />
-      <MetricChipRow
-        items={[
-          { label: "CONCESSIONS QUEUE", value: queue ?? "…", to: "/staff/concessions" },
-          { label: "CARD FEES TODAY", value: sales ? sales.fees : "…", to: "/staff/kiosk" },
+          { label: "RECENT LOOKUPS", value: inspections?.length ?? "...", to: "/staff/verify" },
+          { label: "FLAGGED (ALL)", value: inspections?.filter((r) => (r.outcome || "").toUpperCase() !== "VALID").length ?? "...", to: "/staff/verify" },
         ]}
       />
     </>
@@ -328,7 +284,7 @@ function AdminHero() {
     <>
       <HeroCard
         chip="PENDING ONBOARDING"
-        value={state.pending?.length ?? "…"}
+        value={state.pending?.length ?? "..."}
         label={state.pending?.length ? "Access requests waiting on you" : "No access requests waiting"}
         sub="Tap to review requests"
         to="/staff/onboarding"
@@ -336,8 +292,8 @@ function AdminHero() {
       />
       <MetricChipRow
         items={[
-          { label: "OPEN TICKETS", value: state.tickets?.length ?? "…", to: "/staff/inbox" },
-          { label: "STAFF ACCOUNTS", value: state.team?.length ?? "…", to: "/staff/team" },
+          { label: "OPEN TICKETS", value: state.tickets?.length ?? "...", to: "/staff/inbox" },
+          { label: "STAFF ACCOUNTS", value: state.team?.length ?? "...", to: "/staff/team" },
         ]}
       />
     </>

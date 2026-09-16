@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { fetchRoutesFromDb, fetchProductsForRouteFromDb } from "../../../api/goldenway";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
+import {
+  fetchRoutesFromDb,
+  fetchProductsForRouteFromDb,
+} from "../../../api/goldenway";
 import {
   recordCashSale,
   clerkIssueCard,
   clerkReplaceLostCard,
   fetchMyKioskSalesToday,
 } from "../../../api/operations";
+import KioskActivityFeed from "../../../components/staff/KioskActivityFeed";
 
 /**
  * CLERK — Kiosk (0008 RPCs, Sprint 2 lane of Joshua Black).
@@ -15,6 +20,10 @@ import {
  * lost-card replacement (R40, fresh card — journeys do NOT carry over).
  * Every success renders a printable receipt (K4); the replace action is
  * guarded by a confirm dialog (K5) because it retires the old card.
+ *
+ * Mobile UX pass: activity feed collapsed by default (drawer), form is
+ * the first thing in view per tab, receipt is scoped to the tab that
+ * produced it, and card-number inputs auto-format as GW-XXXX-XXXX.
  */
 const TABS = [
   { id: "LOAD", label: "Cash load" },
@@ -22,15 +31,34 @@ const TABS = [
   { id: "REPLACE", label: "Lost card" },
 ];
 
+const VALID_TABS = ["LOAD", "ISSUE", "REPLACE"];
+
+function formatCardNumber(raw) {
+  const digits = raw.replace(/[^0-9]/g, "").slice(0, 8);
+  if (!digits) return "";
+  const part1 = digits.slice(0, 4);
+  const part2 = digits.slice(4, 8);
+  return part2 ? `GW-${part1}-${part2}` : `GW-${part1}`;
+}
+
 export default function KioskScreen() {
-  const [tab, setTab] = useState("LOAD");
+  const [searchParams] = useSearchParams();
+  const initialTab = VALID_TABS.includes(searchParams.get("tab"))
+    ? searchParams.get("tab")
+    : "LOAD";
+  const [tab, setTab] = useState(initialTab);
   const [routes, setRoutes] = useState([]);
   const [products, setProducts] = useState([]);
   const [salesToday, setSalesToday] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState(null);
+  const [receiptTab, setReceiptTab] = useState(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   // load form
   const [cardNumber, setCardNumber] = useState("");
@@ -46,23 +74,29 @@ export default function KioskScreen() {
   const [oldCard, setOldCard] = useState("");
 
   useEffect(() => {
+    setLoadingRoutes(true);
     fetchRoutesFromDb()
       .then((r) => {
         setRoutes(r);
         if (r.length) setRouteCode(r[0].code);
       })
+      .catch(() => {})
+      .finally(() => setLoadingRoutes(false));
+    fetchMyKioskSalesToday()
+      .then(setSalesToday)
       .catch(() => {});
-    fetchMyKioskSalesToday().then(setSalesToday).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!routeCode) return;
+    setLoadingProducts(true);
     fetchProductsForRouteFromDb(routeCode)
       .then((p) => {
         setProducts(p);
         setProductCode(p[0]?.code || "");
       })
-      .catch(() => setProducts([]));
+      .catch(() => setProducts([]))
+      .finally(() => setLoadingProducts(false));
   }, [routeCode]);
 
   useEffect(() => {
@@ -77,15 +111,33 @@ export default function KioskScreen() {
     setBusy(true);
     setError("");
     setReceipt(null);
+    setReceiptTab(null);
     setConfirmReplace(false);
     try {
       const result = await fn();
       setReceipt(result);
-      fetchMyKioskSalesToday().then(setSalesToday).catch(() => {});
+      setReceiptTab(tab);
+      fetchMyKioskSalesToday()
+        .then(setSalesToday)
+        .catch(() => {});
     } catch (err) {
       setError(err?.message || "Transaction failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  function switchTab(id) {
+    setTab(id);
+    setReceipt(null);
+    setReceiptTab(null);
+    setError("");
+    setConfirmReplace(false);
+    setActivityOpen(false);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", id);
+      window.history.replaceState(null, "", url.toString());
     }
   }
 
@@ -96,10 +148,17 @@ export default function KioskScreen() {
       <header className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-xl font-bold text-ink-900">Kiosk</h1>
-          <p className="text-[13px] text-ink-900/50 mt-0.5">Cards, cash loads and replacements — all real transactions.</p>
+          <p className="text-[13px] text-ink-900/50 mt-0.5">
+            Cards, cash loads and replacements — all real transactions.
+          </p>
         </div>
-        <div className="shrink-0 rounded-2xl border border-gold-400/40 bg-white px-4 py-2.5 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
-          <p className="font-display text-xl font-bold text-gold-600">{salesToday}</p>
+        <div
+          className="shrink-0 rounded-2xl border border-gold-400/40 bg-white px-4 py-2.5 text-center"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <p className="font-display text-xl font-bold text-gold-600">
+            {salesToday}
+          </p>
           <p className="eyebrow text-ink-900/40">TODAY</p>
         </div>
       </header>
@@ -109,12 +168,7 @@ export default function KioskScreen() {
           <button
             key={t.id}
             type="button"
-            onClick={() => {
-              setTab(t.id);
-              setReceipt(null);
-              setError("");
-              setConfirmReplace(false);
-            }}
+            onClick={() => switchTab(t.id)}
             className={`rounded-full px-4 py-2 text-[12px] font-semibold transition-colors ${
               tab === t.id
                 ? "bg-gradient-to-r from-gold-400 to-gold-500 text-ink-900 shadow-[0_8px_18px_-8px_rgba(240,180,41,0.8)]"
@@ -127,14 +181,17 @@ export default function KioskScreen() {
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 rounded-xl border border-red-500/25 bg-red-100 px-4 py-2.5 text-[12.5px] text-red-700">
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-red-500/25 bg-red-100 px-4 py-2.5 text-[12.5px] text-red-700"
+        >
           {error}
         </p>
       )}
-      {receipt && <Receipt receipt={receipt} />}
 
       {tab === "LOAD" && (
         <motion.form
+          key="load-form"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={(e) => {
@@ -145,45 +202,87 @@ export default function KioskScreen() {
           style={{ boxShadow: "var(--shadow-card)" }}
         >
           <L label="Card number">
-            <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value.toUpperCase())} placeholder="GW-XXXX-XXXX" className={inputCls} />
+            <input
+              value={cardNumber}
+              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+              placeholder="GW-XXXX-XXXX"
+              inputMode="numeric"
+              className={`${inputCls} font-mono tracking-wider`}
+            />
           </L>
           <L label="Route">
-            <select value={routeCode} onChange={(e) => setRouteCode(e.target.value)} className={inputCls}>
-              {routes.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.code} — {r.origin} → {r.destination}
-                </option>
-              ))}
-            </select>
+            {loadingRoutes ? (
+              <SkeletonField />
+            ) : routes.length === 0 ? (
+              <EmptyField text="No routes available" />
+            ) : (
+              <select
+                value={routeCode}
+                onChange={(e) => setRouteCode(e.target.value)}
+                className={inputCls}
+              >
+                {routes.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.code} — {r.origin} → {r.destination}
+                  </option>
+                ))}
+              </select>
+            )}
           </L>
           <L label="Product">
-            <select value={productCode} onChange={(e) => setProductCode(e.target.value)} className={inputCls}>
-              {products.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.code} · {p.journeys} journeys
-                </option>
-              ))}
-            </select>
+            {loadingProducts ? (
+              <SkeletonField />
+            ) : products.length === 0 ? (
+              <EmptyField text="No products for this route" />
+            ) : (
+              <select
+                value={productCode}
+                onChange={(e) => setProductCode(e.target.value)}
+                className={inputCls}
+              >
+                {products.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.code} · {p.journeys} journeys
+                  </option>
+                ))}
+              </select>
+            )}
           </L>
           {selected && (
             <div className="flex items-center justify-between rounded-xl bg-cream-200 border border-gold-400/30 px-4 py-3">
-              <span className="text-[12px] text-ink-900/55">Price (regulated fare table)</span>
-              <span className="font-display text-[17px] font-bold text-gold-600">R{(selected.priceCents / 100).toFixed(2)}</span>
+              <span className="text-[12px] text-ink-900/55">
+                Price (regulated fare table)
+              </span>
+              <span className="font-display text-[17px] font-bold text-gold-600">
+                R{(selected.priceCents / 100).toFixed(2)}
+              </span>
             </div>
           )}
-          <button type="submit" disabled={busy || !cardNumber || !productCode} className="btn-gold w-full py-3.5 text-[14px] disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={busy || !cardNumber || !productCode}
+            className="btn-gold w-full py-3.5 text-[14px] disabled:opacity-50"
+          >
             {busy ? "Processing…" : "Record CASH sale"}
           </button>
+          {receiptTab === "LOAD" && receipt && <Receipt receipt={receipt} />}
         </motion.form>
       )}
 
       {tab === "ISSUE" && (
         <motion.form
+          key="issue-form"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={(e) => {
             e.preventDefault();
-            run(() => clerkIssueCard(idNumber, issueProduct ? issueRoute : null, issueProduct || null));
+            run(() =>
+              clerkIssueCard(
+                idNumber,
+                issueProduct ? issueRoute : null,
+                issueProduct || null,
+              ),
+            );
           }}
           className="mt-4 rounded-2xl border border-ink-900/10 bg-white p-5 flex flex-col gap-3"
           style={{ boxShadow: "var(--shadow-card)" }}
@@ -191,7 +290,9 @@ export default function KioskScreen() {
           <L label="Commuter's 13-digit SA ID">
             <input
               value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))}
+              onChange={(e) =>
+                setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))
+              }
               placeholder="9005155001084"
               inputMode="numeric"
               className={`${inputCls} font-mono tracking-wider`}
@@ -199,7 +300,11 @@ export default function KioskScreen() {
           </L>
           <L label="Optional: load a product in the same visit">
             <div className="flex gap-2">
-              <select value={issueRoute} onChange={(e) => setIssueRoute(e.target.value)} className={inputCls}>
+              <select
+                value={issueRoute}
+                onChange={(e) => setIssueRoute(e.target.value)}
+                className={inputCls}
+              >
                 <option value="">No product</option>
                 {routes.map((r) => (
                   <option key={r.code} value={r.code}>
@@ -208,7 +313,11 @@ export default function KioskScreen() {
                 ))}
               </select>
               {issueRoute && (
-                <select value={issueProduct} onChange={(e) => setIssueProduct(e.target.value)} className={inputCls}>
+                <select
+                  value={issueProduct}
+                  onChange={(e) => setIssueProduct(e.target.value)}
+                  className={inputCls}
+                >
                   {products.map((p) => (
                     <option key={p.code} value={p.code}>
                       {p.code}
@@ -218,15 +327,24 @@ export default function KioskScreen() {
               )}
             </div>
           </L>
-          <p className="text-[11.5px] text-ink-900/45">R40 card fee is recorded automatically as a CASH sale with its own receipt.</p>
-          <button type="submit" disabled={busy || idNumber.length !== 13} className="btn-gold w-full py-3.5 text-[14px] disabled:opacity-50">
+          <p className="text-[11.5px] text-ink-900/45">
+            R40 card fee is recorded automatically as a CASH sale with its own
+            receipt.
+          </p>
+          <button
+            type="submit"
+            disabled={busy || idNumber.length !== 13}
+            className="btn-gold w-full py-3.5 text-[14px] disabled:opacity-50"
+          >
             {busy ? "Issuing…" : "Issue Gold Card (R40)"}
           </button>
+          {receiptTab === "ISSUE" && receipt && <Receipt receipt={receipt} />}
         </motion.form>
       )}
 
       {tab === "REPLACE" && (
         <motion.form
+          key="replace-form"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={(e) => {
@@ -237,17 +355,60 @@ export default function KioskScreen() {
           style={{ boxShadow: "var(--shadow-card)" }}
         >
           <L label="Lost card number">
-            <input value={oldCard} onChange={(e) => setOldCard(e.target.value.toUpperCase())} placeholder="GW-XXXX-XXXX" className={inputCls} />
+            <input
+              value={oldCard}
+              onChange={(e) => setOldCard(formatCardNumber(e.target.value))}
+              placeholder="GW-XXXX-XXXX"
+              inputMode="numeric"
+              className={`${inputCls} font-mono tracking-wider`}
+            />
           </L>
           <p className="text-[11.5px] text-ink-900/45">
-            The old card is retired permanently and a fresh card is issued for the same owner (R40 replacement fee).
-            Remaining journeys do <strong>not</strong> carry over.
+            The old card is retired permanently and a fresh card is issued for
+            the same owner (R40 replacement fee). Remaining journeys do{" "}
+            <strong>not</strong> carry over.
           </p>
-          <button type="submit" disabled={busy || !oldCard} className="btn-gold w-full py-3.5 text-[14px] disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={busy || !oldCard}
+            className="btn-gold w-full py-3.5 text-[14px] disabled:opacity-50"
+          >
             {busy ? "Replacing…" : "Replace lost card"}
           </button>
+          {receiptTab === "REPLACE" && receipt && <Receipt receipt={receipt} />}
         </motion.form>
       )}
+
+      {/* Activity drawer — collapsed by default so it never blocks the form */}
+      <div
+        className="mt-4 rounded-2xl border border-ink-900/10 bg-white overflow-hidden"
+        style={{ boxShadow: "var(--shadow-card)" }}
+      >
+        <button
+          type="button"
+          onClick={() => setActivityOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-3.5 text-[13px] font-semibold text-ink-900/70"
+        >
+          Today's activity
+          <span
+            className={`transition-transform ${activityOpen ? "rotate-180" : ""}`}
+          >
+            ▾
+          </span>
+        </button>
+        <AnimatePresence initial={false}>
+          {activityOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-ink-900/10 px-5 pb-4"
+            >
+              <KioskActivityFeed refreshKey={salesToday} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* K5 — confirm dialog: replacement is irreversible */}
       {confirmReplace && (
@@ -264,10 +425,13 @@ export default function KioskScreen() {
             style={{ boxShadow: "var(--shadow-card-lg)" }}
           >
             <p className="text-2xl">⚠️</p>
-            <h3 className="mt-2 font-display text-[16px] font-bold text-ink-900">Replace card {oldCard}?</h3>
+            <h3 className="mt-2 font-display text-[16px] font-bold text-ink-900">
+              Replace card {oldCard}?
+            </h3>
             <p className="mt-2 text-[12.5px] leading-relaxed text-ink-900/60">
-              This marks the old card <strong>LOST</strong> forever, issues a new number, and charges the R40 fee.
-              Un-used journeys on the lost card are not transferred.
+              This marks the old card <strong>LOST</strong> forever, issues a
+              new number, and charges the R40 fee. Un-used journeys on the lost
+              card are not transferred.
             </p>
             <div className="mt-5 flex gap-2.5">
               <button
@@ -305,6 +469,20 @@ function L({ label, children }) {
   );
 }
 
+function SkeletonField() {
+  return (
+    <div
+      className={`${inputCls} animate-pulse bg-ink-900/5 text-transparent select-none`}
+    >
+      —
+    </div>
+  );
+}
+
+function EmptyField({ text }) {
+  return <div className={`${inputCls} text-ink-900/35 italic`}>{text}</div>;
+}
+
 function Receipt({ receipt }) {
   const LABELS = {
     id: "Order",
@@ -329,7 +507,12 @@ function Receipt({ receipt }) {
   const fmt = (k, v) => {
     if (/cents/i.test(k)) return `R${(Number(v) / 100).toFixed(2)}`;
     if (/^\d{4}-\d{2}-\d{2}T/.test(String(v))) {
-      return new Date(v).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      return new Date(v).toLocaleString("en-ZA", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
     return String(v);
   };
@@ -341,11 +524,15 @@ function Receipt({ receipt }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="mt-4 rounded-2xl border border-emerald-500/25 bg-emerald-100 p-5"
+      className="mt-1 rounded-2xl border border-emerald-500/25 bg-emerald-100 p-5"
       id="kiosk-receipt"
+      role="status"
+      aria-live="polite"
     >
       <div className="flex items-center justify-between">
-        <p className="text-[12px] font-bold tracking-wide text-emerald-700">✓ TRANSACTION COMPLETE</p>
+        <p className="text-[12px] font-bold tracking-wide text-emerald-700">
+          ✓ TRANSACTION COMPLETE
+        </p>
         <button
           type="button"
           onClick={() => window.print()}
@@ -356,9 +543,16 @@ function Receipt({ receipt }) {
       </div>
       <div className="mt-3 flex flex-col gap-1.5">
         {fallback.map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between text-[12.5px]">
-            <span className="text-ink-900/50">{LABELS[k] || k.replace(/([A-Z])/g, " $1").toLowerCase()}</span>
-            <span className="font-mono font-semibold text-ink-900">{fmt(k, v)}</span>
+          <div
+            key={k}
+            className="flex items-center justify-between text-[12.5px]"
+          >
+            <span className="text-ink-900/50">
+              {LABELS[k] || k.replace(/([A-Z])/g, " $1").toLowerCase()}
+            </span>
+            <span className="font-mono font-semibold text-ink-900">
+              {fmt(k, v)}
+            </span>
           </div>
         ))}
       </div>

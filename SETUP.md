@@ -126,6 +126,7 @@ After the four migrations above, apply the multi-role set **in order** (SQL Edit
 7. `supabase/migrations/0007_notifications.sql` — notifications + triggers on every event (purchase, tap, alert, ticket, inspection, …) + realtime
 8. `supabase/migrations/0008_card_lifecycle.sql` — CASH gateway, signup-with-card lookup/link, in-app Gold Card order, clerk kiosk issue/cash sale/lost-card replace
 9. `supabase/migrations/0009_support_completion.sql` — agent queue: claim/reply/resolve/escalate, agents-online, inbox list
+10. `supabase/migrations/0012_staff_onboarding_no_otp.sql` — staff onboarding WITHOUT email/OTP: the applicant signs up with a password on Staff Sign-Up, the ADMIN approves in the queue, and the approval trigger provisions their `staff` row (denial deletes the applicant's auth account). Drops the old 0011 OTP tables/functions. Requires **Confirm email OFF** (§3 above) so `signUp()` returns a live session.
 
 ### Demo seed (fictional cast)
 
