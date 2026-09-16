@@ -170,7 +170,7 @@ export async function fetchMyRuns() {
     .from("vehicle_runs")
     .select("*")
     .order("started_at", { ascending: false })
-    .limit(20);
+    .limit(60); // generous enough to cover a week of multi-run shifts for on-time stats
   if (error) throw toApiError(error);
   return (data || []).map(mapRun);
 }

@@ -38,19 +38,24 @@ const STATUS_PILL = {
   COMPLETED: "bg-cream-300 text-ink-900/55 border-ink-900/15",
 };
 
+const NOTE_MAX = 300;
+
 export default function RunsScreen() {
   const [runs, setRuns] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
   const [routeCode, setRouteCode] = useState("");
   const [busId, setBusId] = useState("");
+  const [direction, setDirection] = useState("OUTBOUND");
   const [pretripNote, setPretripNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [departures, setDepartures] = useState([]);
   const [composing, setComposing] = useState(null); // { code, delay, label } | null
   const [composerNote, setComposerNote] = useState("");
+  const [composerError, setComposerError] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -64,8 +69,16 @@ export default function RunsScreen() {
   }, [busId]);
 
   useEffect(() => {
-    fetchRoutesFromDb().then(setRoutes).catch(() => {});
-    load();
+    let cancelled = false;
+    Promise.all([
+      fetchRoutesFromDb()
+        .then((list) => !cancelled && setRoutes(list || []))
+        .catch(() => !cancelled && setError("Could not load routes — check your connection and reload.")),
+      load(),
+    ]).finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -104,11 +117,15 @@ export default function RunsScreen() {
   async function handleStart(e) {
     e.preventDefault();
     if (busy || !routeCode || !busId) return;
+    if (pretripNote.trim().length > NOTE_MAX) {
+      setError(`Pre-trip note: keep it under ${NOTE_MAX} characters.`);
+      return;
+    }
     setBusy(true);
     setError("");
     setMsg("");
     try {
-      await startRun(routeCode, busId, "OUTBOUND", pretripNote.trim() || null);
+      await startRun(routeCode, busId, direction, pretripNote.trim() || null);
       setMsg(`Run started on ${routeCode} with bus ${busId}`);
       setPretripNote("");
       await load();
@@ -119,8 +136,9 @@ export default function RunsScreen() {
     }
   }
 
+  /** Returns true on success so the note-composer modal knows whether to close. */
   async function report(status, delayMinutes = 0, note = null) {
-    if (!openRun || busy) return;
+    if (!openRun || busy) return false;
     setBusy(true);
     setError("");
     try {
@@ -133,8 +151,10 @@ export default function RunsScreen() {
             : `Reported ${status.replace("_", " ").toLowerCase()}${updated?.delayMinutes ? ` (+${updated.delayMinutes} min)` : ""} — commuters on this route have been alerted.`,
       );
       await load();
+      return true;
     } catch (err) {
       setError(err?.message || "Could not report the status");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -142,20 +162,36 @@ export default function RunsScreen() {
 
   function handleActionTap(action) {
     if (!openRun || busy) return;
+    setMsg("");
+    setError("");
     if (action.needsNote) {
       setComposerNote("");
+      setComposerError("");
       setComposing(action);
       return;
     }
     report(action.code, action.delay || 0);
   }
 
-  function confirmComposer() {
-    if (!composing) return;
+  async function confirmComposer() {
+    if (!composing || busy) return;
     const note = composerNote.trim();
-    report(composing.code, composing.delay || 0, note || null);
-    setComposing(null);
+    if (note.length > NOTE_MAX) {
+      setComposerError(`Keep it under ${NOTE_MAX} characters.`);
+      return;
+    }
+    const ok = await report(composing.code, composing.delay || 0, note || null);
+    if (ok) setComposing(null);
   }
+
+  useEffect(() => {
+    if (!composing) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setComposing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [composing]);
 
   return (
     <div className="px-5 pt-2">
@@ -167,7 +203,12 @@ export default function RunsScreen() {
         {msg && <p role="status" className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[12px] text-emerald-300">✓ {msg}</p>}
         {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-[12px] text-red-300">{error}</p>}
 
-        {openRun ? (
+        {loading ? (
+          <div className="mt-5 flex flex-col gap-3">
+            <div className="skeleton h-32 rounded-2xl" />
+            <div className="skeleton h-10 rounded-xl w-2/3" />
+          </div>
+        ) : openRun ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5 rounded-2xl border border-gold-400/30 bg-white p-5">
             <div className="flex items-start justify-between">
               <div>
@@ -223,6 +264,9 @@ export default function RunsScreen() {
                   </option>
                 ))}
               </select>
+              {routes.length === 0 && (
+                <p className="text-[11.5px] text-ink-900/40">No active routes found — contact ADMIN if this looks wrong.</p>
+              )}
               <select
                 value={busId}
                 onChange={(e) => setBusId(e.target.value)}
@@ -235,6 +279,23 @@ export default function RunsScreen() {
                   </option>
                 ))}
               </select>
+              {buses.length === 0 && (
+                <p className="text-[11.5px] text-ink-900/40">No active buses found — contact ADMIN if this looks wrong.</p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {["OUTBOUND", "INBOUND"].map((dir) => (
+                  <button
+                    key={dir}
+                    type="button"
+                    onClick={() => setDirection(dir)}
+                    className={`rounded-xl border py-2.5 text-[13px] font-semibold transition-colors ${
+                      direction === dir ? "border-gold-500 bg-cream-100 text-ink-900" : "border-ink-900/10 bg-white text-ink-900/50"
+                    }`}
+                  >
+                    {dir === "OUTBOUND" ? "Outbound" : "Return trip"}
+                  </button>
+                ))}
+              </div>
               <label className="flex flex-col gap-1.5">
                 <span className="text-[10px] font-bold tracking-wide text-ink-900/40">PRE-TRIP NOTE (OPTIONAL)</span>
                 <textarea
@@ -242,8 +303,10 @@ export default function RunsScreen() {
                   onChange={(e) => setPretripNote(e.target.value)}
                   placeholder="Odometer, bus condition, anything worth logging before you pull out…"
                   rows={2}
+                  maxLength={NOTE_MAX}
                   className="w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3 text-[13px] text-ink-900 outline-none focus:border-gold-400/60 resize-none"
                 />
+                <span className="self-end text-[10px] text-ink-900/30">{pretripNote.length}/{NOTE_MAX}</span>
               </label>
               <button
                 type="submit"
@@ -267,16 +330,29 @@ export default function RunsScreen() {
               <textarea
                 autoFocus
                 value={composerNote}
-                onChange={(e) => setComposerNote(e.target.value)}
+                onChange={(e) => {
+                  setComposerNote(e.target.value);
+                  setComposerError("");
+                }}
                 placeholder="e.g. Traffic on the N2, expect delays…"
                 rows={3}
+                maxLength={NOTE_MAX}
                 className="mt-3 w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3 text-[13px] text-ink-900 outline-none focus:border-gold-400/60 resize-none"
               />
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <div className="flex items-center justify-between mt-1">
+                {composerError ? (
+                  <span className="text-[11px] text-red-600">{composerError}</span>
+                ) : (
+                  <span />
+                )}
+                <span className="text-[10px] text-ink-900/30">{composerNote.length}/{NOTE_MAX}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() => setComposing(null)}
-                  className="rounded-xl border border-ink-900/10 py-3 text-[13px] font-semibold text-ink-900/60"
+                  className="rounded-xl border border-ink-900/10 py-3 text-[13px] font-semibold text-ink-900/60 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -307,7 +383,7 @@ export default function RunsScreen() {
                 </span>
               </div>
             ))}
-            {runs.length === 0 && <p className="text-[12.5px] text-ink-900/40">No runs yet — start your first one above.</p>}
+            {!loading && runs.length === 0 && <p className="text-[12.5px] text-ink-900/40">No runs yet — start your first one above.</p>}
           </div>
         </div>
       
