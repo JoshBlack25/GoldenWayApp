@@ -1,21 +1,34 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { fetchRoutesFromDb } from "../../../api/goldenway";
+import { fetchRoutesFromDb, fetchDepartures } from "../../../api/goldenway";
 import { fetchMyRuns, fetchBuses, startRun, reportRunStatus } from "../../../api/operations";
+import StopTimeline from "../../../components/StopTimeline";
 
 /**
  * DRIVER — My runs (D6). Start a run (route + fleet number from the real
- * buses table), then report status with big glove-friendly buttons.
- * DELAYED/BREAKDOWN reports auto-publish a route service alert (0006
+ * buses table, plus an optional pre-trip note — D3), then report status
+ * with big glove-friendly buttons. DELAYED/BREAKDOWN reports prompt for a
+ * commuter-facing note (D5) and auto-publish a route service alert (0006
  * trigger) that commuters see instantly on Home + notifications.
  */
 const STATUS_ACTIONS = [
   { code: "ON_TIME", label: "ON TIME", cls: "bg-emerald-500 hover:bg-emerald-400" },
-  { code: "DELAYED", label: "+10 MIN", cls: "bg-amber-500 hover:bg-amber-400", delay: 10 },
-  { code: "DELAYED", label: "+20 MIN", cls: "bg-orange-500 hover:bg-orange-400", delay: 20 },
-  { code: "BREAKDOWN", label: "BREAKDOWN", cls: "bg-brand-500 hover:bg-brand-400" },
+  { code: "DELAYED", label: "+10 MIN", cls: "bg-amber-500 hover:bg-amber-400", delay: 10, needsNote: true },
+  { code: "DELAYED", label: "+20 MIN", cls: "bg-orange-500 hover:bg-orange-400", delay: 20, needsNote: true },
+  { code: "BREAKDOWN", label: "BREAKDOWN", cls: "bg-brand-500 hover:bg-brand-400", needsNote: true },
   { code: "COMPLETED", label: "END RUN", cls: "bg-ink-900 hover:bg-ink-900/85 border border-ink-900" },
 ];
+
+function hhmm(iso) {
+  return (iso || "").slice(0, 5);
+}
+
+function minutesUntil(hhmmStr, now = new Date()) {
+  const [h, m] = hhmmStr.split(":").map(Number);
+  const target = new Date(now);
+  target.setHours(h, m, 0, 0);
+  return Math.round((target - now) / 60000);
+}
 
 const STATUS_PILL = {
   ON_TIME: "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
@@ -31,9 +44,13 @@ export default function RunsScreen() {
   const [buses, setBuses] = useState([]);
   const [routeCode, setRouteCode] = useState("");
   const [busId, setBusId] = useState("");
+  const [pretripNote, setPretripNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+  const [departures, setDepartures] = useState([]);
+  const [composing, setComposing] = useState(null); // { code, delay, label } | null
+  const [composerNote, setComposerNote] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -54,6 +71,36 @@ export default function RunsScreen() {
 
   const openRun = runs.find((r) => r.status !== "COMPLETED");
 
+  // D4 — today's remaining departures on the active run's route, so the
+  // driver can see where they sit against the schedule while running.
+  useEffect(() => {
+    if (!openRun) {
+      setDepartures([]);
+      return;
+    }
+    let cancelled = false;
+    fetchDepartures(openRun.routeCode, openRun.direction, openRun.serviceDay)
+      .then((list) => !cancelled && setDepartures(list || []))
+      .catch(() => !cancelled && setDepartures([]));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRun?.id, openRun?.routeCode, openRun?.direction, openRun?.serviceDay]);
+
+  const timelineStops = useMemo(() => {
+    if (!openRun || departures.length === 0) return [];
+    const now = new Date();
+    const withMins = departures.map((d) => ({ iso: d, mins: minutesUntil(d, now) }));
+    const currentIdx = withMins.findIndex((d) => d.mins > -5);
+    const windowStart = Math.max(0, (currentIdx === -1 ? withMins.length : currentIdx) - 1);
+    return withMins.slice(windowStart, windowStart + 5).map((d, i) => ({
+      label: `Departure ${hhmm(d.iso)}`,
+      time: d.mins > 0 ? `in ${d.mins} min` : d.mins > -5 ? "boarding now" : "departed",
+      state: d.mins <= -5 ? "done" : windowStart + i === currentIdx ? "current" : "upcoming",
+    }));
+  }, [openRun, departures]);
+
   async function handleStart(e) {
     e.preventDefault();
     if (busy || !routeCode || !busId) return;
@@ -61,8 +108,9 @@ export default function RunsScreen() {
     setError("");
     setMsg("");
     try {
-      await startRun(routeCode, busId, "OUTBOUND");
+      await startRun(routeCode, busId, "OUTBOUND", pretripNote.trim() || null);
       setMsg(`Run started on ${routeCode} with bus ${busId}`);
+      setPretripNote("");
       await load();
     } catch (err) {
       setError(err?.message || "Could not start the run");
@@ -71,12 +119,12 @@ export default function RunsScreen() {
     }
   }
 
-  async function report(status, delayMinutes = 0) {
+  async function report(status, delayMinutes = 0, note = null) {
     if (!openRun || busy) return;
     setBusy(true);
     setError("");
     try {
-      const updated = await reportRunStatus(openRun.id, status, delayMinutes);
+      const updated = await reportRunStatus(openRun.id, status, delayMinutes, note);
       setMsg(
         status === "COMPLETED"
           ? "Run completed — nice work."
@@ -90,6 +138,23 @@ export default function RunsScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleActionTap(action) {
+    if (!openRun || busy) return;
+    if (action.needsNote) {
+      setComposerNote("");
+      setComposing(action);
+      return;
+    }
+    report(action.code, action.delay || 0);
+  }
+
+  function confirmComposer() {
+    if (!composing) return;
+    const note = composerNote.trim();
+    report(composing.code, composing.delay || 0, note || null);
+    setComposing(null);
   }
 
   return (
@@ -127,13 +192,20 @@ export default function RunsScreen() {
                   type="button"
                   disabled={busy}
                   whileTap={{ scale: 0.96 }}
-                  onClick={() => report(a.code, a.delay || 0)}
+                  onClick={() => handleActionTap(a)}
                   className={`${a.cls} rounded-2xl py-5 font-display text-[14px] font-bold text-white shadow-lg transition-all disabled:opacity-50 ${i === STATUS_ACTIONS.length - 1 ? "col-span-2" : ""}`}
                 >
                   {busy ? "…" : a.label}
                 </motion.button>
               ))}
             </div>
+
+            {timelineStops.length > 0 && (
+              <div className="mt-6">
+                <p className="eyebrow text-ink-900/40 mb-3">TODAY'S SCHEDULE — {openRun.routeCode}</p>
+                <StopTimeline stops={timelineStops} />
+              </div>
+            )}
           </motion.div>
         ) : (
           <form onSubmit={handleStart} className="mt-5 rounded-2xl border border-ink-900/10 bg-white p-5">
@@ -163,6 +235,16 @@ export default function RunsScreen() {
                   </option>
                 ))}
               </select>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold tracking-wide text-ink-900/40">PRE-TRIP NOTE (OPTIONAL)</span>
+                <textarea
+                  value={pretripNote}
+                  onChange={(e) => setPretripNote(e.target.value)}
+                  placeholder="Odometer, bus condition, anything worth logging before you pull out…"
+                  rows={2}
+                  className="w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3 text-[13px] text-ink-900 outline-none focus:border-gold-400/60 resize-none"
+                />
+              </label>
               <button
                 type="submit"
                 disabled={busy || !routeCode || !busId}
@@ -174,6 +256,43 @@ export default function RunsScreen() {
           </form>
         )}
 
+        {composing && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/50 px-5 pb-8 sm:items-center" role="dialog" aria-modal="true">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-sm rounded-2xl bg-white p-5"
+            >
+              <p className="eyebrow text-ink-900/40">{composing.label} — TELL COMMUTERS WHY (OPTIONAL)</p>
+              <textarea
+                autoFocus
+                value={composerNote}
+                onChange={(e) => setComposerNote(e.target.value)}
+                placeholder="e.g. Traffic on the N2, expect delays…"
+                rows={3}
+                className="mt-3 w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3 text-[13px] text-ink-900 outline-none focus:border-gold-400/60 resize-none"
+              />
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setComposing(null)}
+                  className="rounded-xl border border-ink-900/10 py-3 text-[13px] font-semibold text-ink-900/60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={confirmComposer}
+                  className="btn-gold rounded-xl py-3 text-[13px] disabled:opacity-50"
+                >
+                  {busy ? "Sending…" : "Confirm"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         <div className="mt-6">
           <p className="eyebrow text-ink-900/40 mb-2">RECENT RUNS</p>
           <div className="flex flex-col gap-1.5">
@@ -182,7 +301,9 @@ export default function RunsScreen() {
                 <span className="text-ink-900/65">{r.routeCode} · {r.busId}</span>
                 <span className="flex items-center gap-2 text-ink-900/45">
                   {new Date(r.startedAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${STATUS_PILL[r.status]}`}>DONE</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${STATUS_PILL[r.status]}`}>
+                    {r.delayMinutes > 0 ? `+${r.delayMinutes} MIN` : "ON TIME"}
+                  </span>
                 </span>
               </div>
             ))}
