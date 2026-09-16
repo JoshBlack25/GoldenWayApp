@@ -6,6 +6,8 @@ import { tabsForRole, Icons } from "../../../config/navigation";
 import {
   fetchPendingConcessions,
   fetchKioskSalesSummary,
+  fetchMySalesToday,
+  fetchMyRuns,
 } from "../../../api/operations";
 
 /**
@@ -42,6 +44,7 @@ export default function StaffHomeScreen() {
       </p>
 
       {role === "CLERK" && <ClerkStrip />}
+      {role === "DRIVER" && <DriverStrip />}
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -160,6 +163,91 @@ function ClerkStrip() {
           )}
         </div>
       )}
+    </motion.div>
+  );
+}
+
+const DRIVER_STATUS_PILL = {
+  ON_TIME: "bg-emerald-100 text-emerald-700 border-emerald-400/30",
+  DELAYED: "bg-amber-100 text-amber-700 border-amber-400/30",
+  BREAKDOWN: "bg-brand-50 text-brand-600 border-brand-500/30",
+  DIVERTED: "bg-sky-100 text-sky-700 border-sky-400/30",
+};
+
+function elapsedLabel(startedAt) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const h = Math.floor(mins / 60);
+  return `${h}h ${mins % 60}m ago`;
+}
+
+/** D1 — DRIVER live strip: current run at a glance + this week's on-time rate. */
+function DriverStrip() {
+  const [runs, setRuns] = useState(null);
+
+  useEffect(() => {
+    let live = true;
+    fetchMyRuns()
+      .then((r) => live && setRuns(r))
+      .catch(() => live && setRuns([]));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (runs === null) return null;
+
+  const openRun = runs.find((r) => r.status !== "COMPLETED");
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const completedThisWeek = runs.filter(
+    (r) => r.status === "COMPLETED" && new Date(r.startedAt).getTime() >= weekAgo,
+  );
+  const onTimePct = completedThisWeek.length
+    ? Math.round((completedThisWeek.filter((r) => !r.delayMinutes).length / completedThisWeek.length) * 100)
+    : null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.08, duration: 0.3 }}
+      className="mt-4"
+    >
+      <div className="rounded-2xl border border-gold-400/30 bg-white p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-baseline justify-between px-1">
+          <p className="eyebrow text-ink-900/45">{openRun ? "ACTIVE RUN" : "MY RUNS"}</p>
+          <Link to="/staff/runs" className="text-[11px] font-bold text-gold-700">
+            {openRun ? "Manage run →" : "Start a run →"}
+          </Link>
+        </div>
+
+        {openRun ? (
+          <div className="mt-3 flex items-center justify-between px-1">
+            <div>
+              <p className="font-display text-[15px] font-bold text-ink-900">
+                {openRun.routeCode} · Bus {openRun.busId}
+              </p>
+              <p className="text-[11px] text-ink-900/45 mt-0.5">started {elapsedLabel(openRun.startedAt)}</p>
+            </div>
+            <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wider ${DRIVER_STATUS_PILL[openRun.status] || DRIVER_STATUS_PILL.ON_TIME}`}>
+              {openRun.status.replace("_", " ")}{openRun.delayMinutes > 0 ? ` +${openRun.delayMinutes}` : ""}
+            </span>
+          </div>
+        ) : (
+          <p className="mt-2 px-1 text-[12.5px] text-ink-900/50">No run in progress.</p>
+        )}
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-cream-200 px-2 py-2.5 text-center">
+            <p className="font-display text-[15px] font-bold text-ink-900 leading-none">{completedThisWeek.length}</p>
+            <p className="mt-1.5 text-[8.5px] font-bold tracking-[0.12em] text-ink-900/40">RUNS THIS WEEK</p>
+          </div>
+          <div className="rounded-xl bg-cream-200 px-2 py-2.5 text-center">
+            <p className="font-display text-[15px] font-bold text-ink-900 leading-none">{onTimePct === null ? "—" : `${onTimePct}%`}</p>
+            <p className="mt-1.5 text-[8.5px] font-bold tracking-[0.12em] text-ink-900/40">ON TIME</p>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }
