@@ -1,0 +1,9 @@
+{
+  "name": "goldenway-supabase-seed",
+  "private": true,
+  "type": "module",
+  "description": "Demo seed script for the GoldenWay Supabase backend (run: node seed-demo.mjs https://zosmjkmlbodqfttmzoll.supabase.co sb_publishable_rRWPvdoLjrQnyJFXL3J_kw_efWlo0fj)",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0"
+  }
+}

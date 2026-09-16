@@ -1,0 +1,37 @@
+# --- dependencies ---
+node_modules/
+
+# --- build output ---
+frontend/dist/
+dist/
+build/
+
+# --- environment / secrets (keep .env.example committed) ---
+.env
+.env.local
+.env.*.local
+*.pem
+
+# --- supabase CLI local state ---
+supabase/.temp/
+supabase/.branches/
+
+# --- logs ---
+*.log
+npm-debug.log*
+logs/
+
+# --- editor / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- misc ---
+*.local
+coverage/
+
+# --- agent workspace state ---
+.freebuff/
