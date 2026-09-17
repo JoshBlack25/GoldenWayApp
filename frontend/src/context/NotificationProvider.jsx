@@ -1,18 +1,15 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./auth";
 import { supabase } from "../lib/supabaseClient";
 import { fetchNotifications, fetchUnreadCount, markNotificationsRead } from "../api/operations";
+import { NotificationContext } from "./notificationContext";
 /**
  * NotificationProvider (D3, Q7) — live bell over the notifications table.
  * Counts + list load on sign-in; a Postgres realtime subscription (0007
  * enables realtime on notifications) refreshes on INSERT for this user.
- * Exposes { unread, notifications, refresh, markAllRead, markRead }.
+ * Exposes { unread, notifications, refresh, markAllRead, markRead } via
+ * the useNotifications hook (./useNotifications).
  */
-const NotificationContext = createContext(null);
-
-export function useNotifications() {
-  return useContext(NotificationContext);
-}
 
 export default function NotificationProvider({ children }) {
   const { user } = useAuth();
@@ -66,7 +63,7 @@ export default function NotificationProvider({ children }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, refresh]);
+  }, [user, userId, refresh]);
 
   const markAllRead = useCallback(async () => {
     await markNotificationsRead(null);

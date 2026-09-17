@@ -6,8 +6,6 @@ import { useTrips } from "../../../context/trip";
 import { ApiError } from "../../../api/client";
 import { fetchRoutes } from "../LoadTrips/data/loadTripsData";
 
-const VALIDATOR_DELAY_MS = 2600;
-
 /**
  * Simulated bus validator wired to the real tap endpoint (BR-07). Thandi
  * picks the route she is boarding, taps, and the backend decides whether
