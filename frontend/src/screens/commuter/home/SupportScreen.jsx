@@ -28,7 +28,7 @@ export default function SupportScreen() {
   const bottomRef = useRef(null);
 
   // Chat engine: fetch + realtime message-by-message + optimistic send.
-  const { messages, send: sendChat, sending } = useTicketChat({
+  const { messages, send: sendChat } = useTicketChat({
     ticketId: activeTicket,
     sender: "COMMUTER",
   });

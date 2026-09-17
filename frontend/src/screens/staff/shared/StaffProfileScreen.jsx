@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../../../context/auth";
 import { updateMyStaffDetails } from "../../../api/staff";
 import { deactivateMyAccount } from "../../../api/operations";
