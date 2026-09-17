@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import MapCanvas from "../../../components/MapCanvas";
+import RouteMap from "../../../components/map/RouteMap";
 import StopTimeline from "../../../components/StopTimeline";
-import { fetchRoutesFromDb, fetchDepartures, fetchLiveAlerts, serviceDayFor } from "../../../api/goldenway";
+import { fetchRoutesFromDb, fetchDepartures, fetchLiveAlerts, fetchStops, serviceDayFor } from "../../../api/goldenway";
 import { fetchLiveRuns } from "../../../api/operations";
 
 /**
@@ -33,6 +34,7 @@ export default function Route42Screen() {
   const [departures, setDepartures] = useState([]);
   const [run, setRun] = useState(null);
   const [alert, setAlert] = useState(null);
+  const [stops, setStops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
@@ -50,14 +52,16 @@ export default function Route42Screen() {
         if (cancelled) return;
         setRoute(match || null);
         if (match) {
-          const [deps, runs, alerts] = await Promise.all([
+          const [deps, runs, alerts, allStops] = await Promise.all([
             fetchDepartures(match.code, "OUTBOUND", serviceDayFor()),
             fetchLiveRuns(match.code).catch(() => []),
             fetchLiveAlerts().catch(() => []),
+            fetchStops().catch(() => []),
           ]);
           if (cancelled) return;
           setDepartures(deps || []);
           setRun(runs[0] || null);
+          setStops(allStops || []);
           setAlert(alerts.find((a) => a.routeCode === match.code) || null);
         }
       } finally {
@@ -69,6 +73,33 @@ export default function Route42Screen() {
     };
   }, []);
 
+  // Real stop coordinates for this route's endpoints (for the live map).
+  // Matched by name against the origin/destination; falls back to null so
+  // the screen renders the stylised SVG canvas instead.
+  const routeStops = useMemo(() => {
+    if (!route || stops.length === 0) return [];
+    const findStop = (name) =>
+      stops.find(
+        (s) =>
+          s.name &&
+          name &&
+          s.name.toLowerCase().includes(String(name).toLowerCase()),
+      );
+    const [origin, destination] = [findStop(route.origin), findStop(route.destination)];
+    return [origin, destination].filter(Boolean);
+  }, [route, stops]);
+
+  // Live bus progress along the route: 0 = origin, 1 = arrived.
+  const liveProgress = useMemo(() => {
+    if (!run || routeStops.length < 2) return 0;
+    const started = run.startedAt ? new Date(run.startedAt).getTime() : 0;
+    if (!started) return 0;
+    // Typical cross-town run ≈ 45 min; clamp to [0.05, 0.95] so the marker
+    // never sits exactly on a terminus.
+    const elapsed = (now.getTime() - started) / (45 * 60 * 1000);
+    return Math.min(0.95, Math.max(0.05, elapsed));
+  }, [run, routeStops.length, now]);
+
   const delay = run?.status === "DELAYED" || run?.status === "BREAKDOWN" ? run.delayMinutes || (run.status === "BREAKDOWN" ? 20 : 0) : 0;
 
   // Build the timeline from the next 4 departures from now (delay-aware).
@@ -77,14 +108,14 @@ export default function Route42Screen() {
     .filter((d) => d.mins > -60)
     .slice(0, 4);
 
-  const stops = upcoming.map((d, i) => ({
+  const timeline = upcoming.map((d, i) => ({
     label: i === 0 ? `${route?.origin || "Origin"} — next departure` : `${route?.origin || "Origin"} — later bus`,
     time: delay > 0 ? `${hhmm(d.iso)} (+${delay} min delay)` : hhmm(d.iso),
     state: i === 0 ? "current" : "upcoming",
   }));
 
-  if (stops.length === 0 && !loading) {
-    stops.push(
+  if (timeline.length === 0 && !loading) {
+    timeline.push(
       { label: `${route?.origin || "Origin"} terminal`, time: "No further departures today", state: "done" },
       { label: route?.destination || "Destination", time: "Service resumes tomorrow", state: "upcoming" },
     );
@@ -93,7 +124,17 @@ export default function Route42Screen() {
   return (
     <div className="flex flex-col px-5 pb-6">
       <div className="relative h-56 overflow-hidden rounded-2xl border border-ink-900/5">
-        <MapCanvas dark />
+        {/* Real live map when the route's stops have coordinates;
+            otherwise the stylised SVG canvas fallback. */}
+        {routeStops.length >= 2 ? (
+          <RouteMap
+            routeStops={routeStops}
+            progress={liveProgress}
+            routeLabel={route?.label || ROUTE_CODE}
+          />
+        ) : (
+          <MapCanvas dark />
+        )}
         <span
           className={`absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide text-white shadow ${
             run?.status === "BREAKDOWN" ? "bg-brand-600" : run ? "bg-emerald-600" : "bg-slate-500"
@@ -139,7 +180,7 @@ export default function Route42Screen() {
             <div className="skeleton h-10 w-1/2" />
           </div>
         ) : (
-          <StopTimeline stops={stops} />
+          <StopTimeline stops={timeline} />
         )}
       </div>
 

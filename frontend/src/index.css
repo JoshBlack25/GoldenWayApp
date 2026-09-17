@@ -1,5 +1,19 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* shadcn-style tokens — only what the mapcn map components use
+   (popups, tooltips, controls). Mapped to GoldenWay colours. */
+@theme inline {
+  --color-background: var(--color-cream-50);
+  --color-foreground: var(--color-ink-900);
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--color-ink-900);
+  --color-muted-foreground: var(--color-slate-500);
+  --color-border: rgba(36, 31, 16, 0.12);
+  --color-ring: var(--color-gold-500);
+  --color-accent: var(--color-cream-100);
+}
 
 @theme {
   /* GABS brand identity — Golden Arrow red is the signature accent of the
