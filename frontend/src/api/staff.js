@@ -87,8 +87,6 @@ export async function inviteStaffMember({ email, firstName, surname, role }) {
   return mapRequest(Array.isArray(row) ? row[0] : row);
 }
 
-<<<<<<< HEAD
-=======
 // ---------------------------------------------------------------------
 // OTP onboarding (migration 0011) — REMOVED in 0012.
 // Staff onboarding now needs no email/OTP: the applicant signs up with a
@@ -96,7 +94,6 @@ export async function inviteStaffMember({ email, firstName, surname, role }) {
 // staff row. The sign-in gate lives in loginAny() (src/api/auth.js).
 // ---------------------------------------------------------------------
 
->>>>>>> 9ca756762f8113533efb1c5f09870641f2b2fe86
 /** ADMIN: latest staff audit-log entries (staff_action_log, ADMIN-gated). */
 export async function fetchStaffAuditLog(limit = 30) {
   const { data, error } = await supabase
@@ -115,8 +112,6 @@ export async function fetchStaffAuditLog(limit = 30) {
     at: row.at,
   }));
 }
-<<<<<<< HEAD
-=======
 
 // ---------------------------------------------------------------------
 // Self-service profile (migration 0013) — every staff role, CLERK
@@ -160,4 +155,3 @@ export async function updateMyStaffDetails({
     passwordChanged: payload.passwordChanged,
   };
 }
->>>>>>> 9ca756762f8113533efb1c5f09870641f2b2fe86
