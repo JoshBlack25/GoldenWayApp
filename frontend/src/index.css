@@ -241,6 +241,13 @@ body {
   border-radius: 0.5rem;
 }
 
+/* Inputs inside a field shell: the shell itself glows on focus, so the
+   inner input's outline would be a doubled highlight. Suppress it —
+   buttons/links keep the focus ring. */
+.field-shell :is(input, textarea, select):focus-visible {
+  outline: none;
+}
+
 /* Print — kiosk receipt printing (Joshua Black, K4) */
 @media print {
   body * {
