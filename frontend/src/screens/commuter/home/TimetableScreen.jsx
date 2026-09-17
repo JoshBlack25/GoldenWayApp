@@ -23,14 +23,6 @@ function toMinutes(iso) {
   return h * 60 + m;
 }
 
-function waveLabel(mins) {
-  if (mins < 5 * 60) return "Early morning";
-  if (mins < 9 * 60) return "Morning peak";
-  if (mins < 15 * 60) return "Midday";
-  if (mins < 19 * 60) return "Afternoon peak";
-  return "Evening";
-}
-
 function countdownLabel(departureMins, nowMins) {
   const diff = departureMins - nowMins;
   if (diff <= 0 && diff > -5) return "Boarding now";
@@ -100,8 +92,6 @@ export default function TimetableScreen() {
       waves: past.length ? [{ label: "Earlier today", items: past.slice(-4) }] : [],
     };
   }, [departures]);
-
-  const routeOptions = [...new Set(routes.map((r) => r.label))];
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-6">
