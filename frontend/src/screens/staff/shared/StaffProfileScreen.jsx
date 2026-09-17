@@ -39,7 +39,6 @@ export default function StaffProfileScreen() {
       </div>
 
       {/* Agent self-service contact details (0011) — AGENT only */}
-      {user?.role === "AGENT" && <AgentContactSection />}
 
       <div className="mt-4 rounded-2xl border border-ink-900/10 bg-white p-5">
         <p className="eyebrow text-ink-900/45">SESSION</p>
