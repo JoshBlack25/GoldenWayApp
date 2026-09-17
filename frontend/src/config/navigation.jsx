@@ -23,6 +23,7 @@ export const Icons = {
   verify: ScanIcon,
   bus: BusIcon,
   inbox: InboxIcon,
+  chat: ChatIcon,
   kiosk: KioskIcon,
   people: PeopleIcon,
   catalog: CatalogIcon,
@@ -69,7 +70,7 @@ export const STAFF_TABS = {
   AGENT: [
     { to: "/staff", label: "Home", icon: "home", end: true },
     { to: "/staff/inbox", label: "Inbox", icon: "inbox" },
-    { to: "/staff/faq", label: "Snippets", icon: "ticket" }, // Raul S2-A4
+    { to: "/staff/chats", label: "Chats", icon: "chat" }, // live chat log (was "Snippets" placeholder)
     { to: "/staff/profile", label: "Profile", icon: "profile" },
   ],
 };
@@ -151,6 +152,15 @@ function InboxIcon({ className }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M3 13l2.5-6.5A2 2 0 0 1 7.4 5h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z" strokeLinejoin="round" />
       <path d="M3 13h5l1.5 2.5h5L16 13h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChatIcon({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 12a8 8 0 0 1-8 8H5l-1.5 3L4 17.5A8 8 0 1 1 21 12z" strokeLinejoin="round" />
+      <path d="M8.5 10.5h7M8.5 13.5h4.5" strokeLinecap="round" />
     </svg>
   );
 }

@@ -36,6 +36,7 @@ import TeamScreen from "./screens/staff/admin/TeamScreen";
 import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
 import RunsScreen from "./screens/staff/driver/RunsScreen";
 import InboxScreen from "./screens/staff/agent/InboxScreen";
+import ChatScreen from "./screens/staff/agent/ChatScreen";
 import KioskScreen from "./screens/staff/clerk/KioskScreen";
 import ConcessionsScreen from "./screens/staff/clerk/ConcessionsScreen";
 import StaffProfileScreen from "./screens/staff/shared/StaffProfileScreen";
@@ -79,6 +80,7 @@ const staffScreens = {
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
   inbox: { element: <InboxScreen />, roles: ["AGENT", "ADMIN"] },
+  chats: { element: <ChatScreen />, roles: ["AGENT", "ADMIN"] },
   kiosk: { element: <KioskScreen />, roles: ["CLERK", "ADMIN"] },
   concessions: { element: <ConcessionsScreen />, roles: ["CLERK", "ADMIN"] },
   profile: { element: <StaffProfileScreen />, roles: "ANY_STAFF" },

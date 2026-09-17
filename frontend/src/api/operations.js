@@ -87,12 +87,35 @@ export async function fetchMyTickets() {
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw toApiError(error);
-  return (data || []).map((t) => ({
+  return (data || []).map(mapTicket);
+}
+
+function mapTicket(t) {
+  return {
     id: t.id,
     subject: t.subject,
     status: t.status,
+    lastMessageAt: t.last_message_at,
+    lastSender: t.last_sender,
     createdAt: t.created_at,
-  }));
+  };
+}
+
+/**
+ * Single message shape for every chat consumer (commuter support,
+ * agent inbox). `from` is the view-facing bubble side; `sender` is the
+ * raw DB enum.
+ */
+export function mapTicketMessage(m) {
+  return {
+    id: m.id,
+    ticketId: m.ticket_id,
+    from: m.sender === "COMMUTER" ? "user" : "agent",
+    text: m.body,
+    time: new Date(m.sent_at).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }),
+    sentAt: m.sent_at,
+    sender: m.sender,
+  };
 }
 
 export async function createTicket(subject, firstMessage) {
@@ -119,17 +142,69 @@ export async function fetchTicketMessages(ticketId) {
     .eq("ticket_id", ticketId)
     .order("sent_at");
   if (error) throw toApiError(error);
-  return (data || []).map((m) => ({
-    id: m.id,
-    from: m.sender === "COMMUTER" ? "user" : "agent",
-    text: m.body,
-    time: new Date(m.sent_at).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }),
-    sender: m.sender,
-  }));
+  return (data || []).map(mapTicketMessage);
 }
 
 export async function sendCommuterMessage(ticketId, body) {
   return rpc("add_ticket_message", { p_ticket_id: ticketId, p_sender: "COMMUTER", p_body: body });
+}
+
+// ---------------------------------------------------------------------
+// Realtime chat plumbing (0011). One place owns the channel wiring —
+// screens and the useTicketChat hook just subscribe; every message,
+// including your own echoes, arrives INSERT-by-INSERT (WhatsApp-style
+// message-by-message delivery). Dedupe happens in the hook.
+// ---------------------------------------------------------------------
+
+/**
+ * Subscribe to live INSERTs on a ticket's thread. Returns an unsubscribe
+ * function. `onMessage` receives a mapped message (mapTicketMessage).
+ */
+export function subscribeTicketMessages(ticketId, onMessage) {
+  const channel = supabase
+    .channel(`ticket-messages-${ticketId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "ticket_messages", filter: `ticket_id=eq.${ticketId}` },
+      (payload) => onMessage(mapTicketMessage(payload.new)),
+    )
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+}
+
+/**
+ * Subscribe to ticket-level changes (status flips, claim/resolve, and
+ * the 0011 last_message_at/last_sender stamps). Returns unsubscribe.
+ * `onUpdate` receives the raw new row.
+ */
+export function subscribeTicketMeta(ticketId, onUpdate) {
+  const channel = supabase
+    .channel(`ticket-meta-${ticketId}`)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "support_tickets", filter: `id=eq.${ticketId}` },
+      (payload) => onUpdate(payload.new),
+    )
+    .subscribe();
+  return () => supabase.removeChannel(channel);
+}
+
+/**
+ * Subscribe to ANY ticket-level change (0011 puts support_tickets on the
+ * realtime publication). One subscription keeps a whole queue/list view
+ * live — the inbox uses this so claim/resolve/status flips from any
+ * agent show up without a manual reload.
+ */
+export function subscribeAllTickets(onUpdate) {
+  const channel = supabase
+    .channel("tickets-all")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "support_tickets" },
+      (payload) => onUpdate(payload.new || payload.old),
+    )
+    .subscribe();
+  return () => supabase.removeChannel(channel);
 }
 
 // =====================================================================
@@ -147,6 +222,8 @@ export async function fetchTicketQueue() {
     lastMessage: t.last_message,
     messageCount: t.message_count,
     assignedTo: t.assigned_to,
+    lastMessageAt: t.last_message_at,
+    lastSender: t.last_sender,
     createdAt: t.created_at,
   }));
 }
@@ -155,6 +232,53 @@ export const claimTicket = (id) => rpc("claim_ticket", { p_ticket_id: id });
 export const replyTicket = (id, body) => rpc("reply_ticket", { p_ticket_id: id, p_body: body });
 export const resolveTicket = (id) => rpc("resolve_ticket", { p_ticket_id: id });
 export const escalateTicket = (id, note) => rpc("escalate_ticket", { p_ticket_id: id, p_note: note || null });
+
+/** Agent heartbeat — call on console open and once a minute. */
+export const setAgentOnline = (online = true) => rpc("set_agent_online", { p_online: online });
+
+/**
+ * My staff row (0011): phone + names for the agent profile page.
+ * Reads go through RLS (staff can read own row); mapping keeps the
+ * camelCase shape the screens use.
+ */
+export async function fetchMyStaffProfile() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  const { data, error } = await supabase
+    .from("staff")
+    .select("first_name, surname, email, phone, role")
+    .eq("id", session.user.id)
+    .maybeSingle();
+  if (error) throw toApiError(error);
+  if (!data) return null;
+  return {
+    firstName: data.first_name,
+    surname: data.surname,
+    email: data.email,
+    phone: data.phone || "",
+    role: data.role,
+  };
+}
+
+/**
+ * Update my own staff profile (0011 RPC). Own row only; email is fixed.
+ * Returns the updated staff row mapped camelCase.
+ */
+export async function updateMyStaffProfile({ firstName, surname, phone }) {
+  const row = await rpc("update_my_staff_profile", {
+    p_first_name: firstName?.trim() || "",
+    p_surname: surname?.trim() || "",
+    p_phone: phone?.trim() || null,
+  });
+  const r = Array.isArray(row) ? row[0] : row;
+  return {
+    firstName: r.first_name,
+    surname: r.surname,
+    email: r.email,
+    phone: r.phone || "",
+    role: r.role,
+  };
+}
 
 export async function fetchAgentsOnline() {
   const result = await rpc("agents_online", {});
