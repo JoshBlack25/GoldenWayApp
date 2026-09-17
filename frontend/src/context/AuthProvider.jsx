@@ -46,6 +46,7 @@ export default function AuthProvider({ children }) {
             firstName: profileType.firstName,
             surname: profileType.surname,
             email: profileType.email,
+            phone: profileType.phone ?? null,
           });
           return;
         }
@@ -80,7 +81,7 @@ export default function AuthProvider({ children }) {
         await supabase.auth.signOut();
         throw new ApiError(403, { error: "This staff account has been deactivated. Contact a GoldenWay admin." });
       }
-      const staffUser = { isStaff: true, ...result.staff };
+      const staffUser = { isStaff: true, ...result.staff, phone: result.staff.phone ?? null };
       setUser(staffUser);
       return staffUser;
     }
@@ -103,7 +104,7 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, initializing, login, register, logout }),
+    () => ({ user, initializing, login, register, logout, setUser }),
     [user, initializing, login, register, logout],
   );
 

@@ -390,3 +390,34 @@ export async function fetchMySalesToday() {
   }));
   return { count: receipts.length, receipts };
 }
+
+// =====================================================================
+// Clerk — kiosk activity feed (Sprint 2 K2, Joshua Black)
+// =====================================================================
+
+/**
+ * Every PAID kiosk transaction today — loads, card-issue fees and
+ * replacement fees — newest first. Powers the kiosk "menu stack"
+ * activity list. RLS: CLERK/ADMIN may read top_up_orders.
+ */
+export async function fetchKioskActivityToday(limit = 40) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from("top_up_orders")
+    .select("id, card_number, product_code, amount_cents, receipt_reference, created_at")
+    .gte("created_at", startOfDay.toISOString())
+    .eq("status", "PAID")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw toApiError(error);
+  return (data || []).map((r) => ({
+    id: r.id,
+    card: r.card_number,
+    kind: r.product_code === "GOLD-CARD-FEE" ? "FEE" : "LOAD",
+    product: r.product_code,
+    amountCents: r.amount_cents || 0,
+    receipt: r.receipt_reference,
+    at: r.created_at,
+  }));
+}

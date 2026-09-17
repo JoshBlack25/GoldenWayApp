@@ -5,11 +5,11 @@ import { ApiError } from "../../../api/client";
 
 /**
  * ADMIN — Onboarding queue (FINAL-DEV-PLAN §5 D2, QuesAndSuggest point 2).
- * Lists staff_access_requests; Approve marks the email as the approved
- * role (the person finishes by signing up with that email — the 0005
- * signup trigger attaches their staff row); Deny records the reason.
- * Also hosts the direct-invite door (create_staff_member) so the ADMIN
- * never has to fall back to raw SQL.
+ * Lists staff_access_requests. Approval creates the applicant's staff row
+ * via the 0012 trigger (they signed up already, so their account goes
+ * live immediately); Deny records the reason and removes the applicant's
+ * auth account (0012 purge trigger). Also hosts the direct-invite door
+ * (create_staff_member) so the ADMIN never has to fall back to raw SQL.
  */
 
 const STATUS_TABS = ["PENDING", "APPROVED", "DENIED", "ALL"];
@@ -58,11 +58,15 @@ export default function OnboardingScreen() {
         approve,
         approve ? null : denyNote.trim() || null,
       );
-      setMessage(
-        approve
-          ? { kind: "ok", text: `${updated.email} approved as ${updated.requestedRole}. They can now sign up with that email.` }
-          : { kind: "ok", text: `${updated.email} denied.` },
-      );
+      if (approve) {
+        // 0012: the approval trigger provisions the staff row on the spot —
+        // no email, the applicant signs in with the password they chose.
+        setMessage(
+          { kind: "ok", text: `${updated.email} approved as ${updated.requestedRole}. They can sign in with the password they chose at sign-up.` },
+        );
+      } else {
+        setMessage({ kind: "ok", text: `${updated.email} denied — their account has been removed.` });
+      }
       setDenying(null);
       setDenyNote("");
       if (tab !== "PENDING") load(tab);
@@ -81,7 +85,7 @@ export default function OnboardingScreen() {
           <div>
             <h1 className="font-display text-xl font-bold text-ink-900">Onboarding queue</h1>
             <p className="text-[13px] text-ink-900/50 mt-1">
-              Approve or deny staff access requests. Approved emails sign up to activate.
+              Approve or deny staff access requests. Approval activates the account the applicant created at sign-up.
             </p>
           </div>
           <button
@@ -285,7 +289,7 @@ function InviteModal({ open, busy, onClose, onInvited }) {
     }
     try {
       const row = await inviteStaffMember(form);
-      onInvited(`${row.email} invited as ${row.requestedRole}. They sign up with that email to activate.`);
+      onInvited(`${row.email} invited as ${row.requestedRole}. They finish by signing up with that email and password.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not send the invite");
     }
