@@ -303,6 +303,45 @@ export function hhmm(iso) {
 // service alerts (Home screen banner)
 // ---------------------------------------------------------------------
 
+/** Stops master list (public read; RLS stops_read). */
+export async function fetchStops() {
+  const { data, error } = await supabase
+    .from("stops")
+    .select("id,name,zone,latitude,longitude")
+    .order("name");
+  if (error) throw toApiError(error);
+  return (data || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    zone: s.zone,
+    latitude: s.latitude,
+    longitude: s.longitude,
+  }));
+}
+
+/**
+ * Update the signed-in commuter's own profile (RLS: commuters_update_self).
+ * Only the fields passed are written; id/email/id_number are immutable.
+ */
+export async function updateMyProfile(patch) {
+  const allowed = ["first_name", "surname", "phone", "gender", "date_of_birth", "concession_type"];
+  const row = {};
+  for (const key of allowed) {
+    if (patch?.[key] !== undefined && patch?.[key] !== null && patch[key] !== "") {
+      row[key] = patch[key];
+    }
+  }
+  if (Object.keys(row).length === 0) throw new Error("Nothing to update");
+  const { data, error } = await supabase
+    .from("commuters")
+    .update(row)
+    .eq("id", (await supabase.auth.getUser()).data.user.id)
+    .select("*")
+    .single();
+  if (error) throw toApiError(error);
+  return data;
+}
+
 export async function fetchLiveAlerts() {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase

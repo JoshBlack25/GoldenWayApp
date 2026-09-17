@@ -87,6 +87,16 @@ export async function inviteStaffMember({ email, firstName, surname, role }) {
   return mapRequest(Array.isArray(row) ? row[0] : row);
 }
 
+<<<<<<< HEAD
+=======
+// ---------------------------------------------------------------------
+// OTP onboarding (migration 0011) — REMOVED in 0012.
+// Staff onboarding now needs no email/OTP: the applicant signs up with a
+// password, the ADMIN approves, and the approval trigger creates their
+// staff row. The sign-in gate lives in loginAny() (src/api/auth.js).
+// ---------------------------------------------------------------------
+
+>>>>>>> 9ca756762f8113533efb1c5f09870641f2b2fe86
 /** ADMIN: latest staff audit-log entries (staff_action_log, ADMIN-gated). */
 export async function fetchStaffAuditLog(limit = 30) {
   const { data, error } = await supabase
@@ -105,3 +115,49 @@ export async function fetchStaffAuditLog(limit = 30) {
     at: row.at,
   }));
 }
+<<<<<<< HEAD
+=======
+
+// ---------------------------------------------------------------------
+// Self-service profile (migration 0013) — every staff role, CLERK
+// included, edits their own name / phone / password from the Profile tab.
+// ---------------------------------------------------------------------
+
+/**
+ * Update my own staff profile. Password change requires the CURRENT
+ * password (verified server-side against auth.users bcrypt hash).
+ * @returns {{ firstName, surname, phone, email, role, passwordChanged }}
+ */
+export async function updateMyStaffDetails({
+  firstName,
+  surname,
+  phone,
+  changePassword = false,
+  currentPassword,
+  newPassword,
+}) {
+  const row = await supabase
+    .rpc("update_my_staff_details", {
+      p_first_name: firstName.trim(),
+      p_surname: surname.trim(),
+      p_phone: phone?.trim() || null,
+      p_change_password: changePassword,
+      p_current_password: changePassword ? currentPassword : null,
+      p_new_password: changePassword ? newPassword : null,
+    })
+    .then(({ data, error }) => {
+      if (error) throw error;
+      return data;
+    });
+  const payload = Array.isArray(row) ? row[0] : row;
+  if (!payload) throw new ApiError(500, { error: "Empty response from update_my_staff_details" });
+  return {
+    firstName: payload.firstName,
+    surname: payload.surname,
+    phone: payload.phone,
+    email: payload.email,
+    role: payload.role,
+    passwordChanged: payload.passwordChanged,
+  };
+}
+>>>>>>> 9ca756762f8113533efb1c5f09870641f2b2fe86
