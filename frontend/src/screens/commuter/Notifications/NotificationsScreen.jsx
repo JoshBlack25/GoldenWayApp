@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useNotifications } from "../../../context/NotificationProvider";
+import { useNotifications } from "../../../context/useNotifications";
 
 /**
  * /notifications (D3, mock M2) — the real notifications list from the
