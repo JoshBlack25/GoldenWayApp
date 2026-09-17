@@ -86,3 +86,22 @@ export async function inviteStaffMember({ email, firstName, surname, role }) {
     });
   return mapRequest(Array.isArray(row) ? row[0] : row);
 }
+
+/** ADMIN: latest staff audit-log entries (staff_action_log, ADMIN-gated). */
+export async function fetchStaffAuditLog(limit = 30) {
+  const { data, error } = await supabase
+    .from("staff_action_log")
+    .select("id,actor_id,action,entity,entity_id,details,at")
+    .order("at", { ascending: false })
+    .limit(limit);
+  if (error) throw toApiError(error);
+  return (data || []).map((row) => ({
+    id: row.id,
+    actorId: row.actor_id,
+    action: row.action,
+    entity: row.entity,
+    entityId: row.entity_id,
+    details: row.details || {},
+    at: row.at,
+  }));
+}

@@ -1,0 +1,22 @@
+{
+  "name": "goldenway-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "test": "npm --prefix frontend run test",
+    "lint": "npm --prefix frontend run lint",
+    "seed": "node supabase/seed-demo.mjs",
+    "check": "node supabase/check-seed.mjs",
+    "verify-onboarding": "node supabase/verify-staff-onboarding.mjs"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0"
+  },
+  "devDependencies": {
+    "supabase": "^2.117.0"
+  }
+}
