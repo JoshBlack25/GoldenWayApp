@@ -298,6 +298,13 @@ export const setStaffActive = (staffId, active) =>
   rpc("set_staff_active", { p_staff_id: staffId, p_active: active });
 
 // =====================================================================
+// Staff — self-service account (0014): Delete(=deactivate). Update
+// (name/surname/phone/password) is updateMyStaffDetails in api/staff.js.
+// =====================================================================
+
+export const deactivateMyAccount = () => rpc("deactivate_my_account", {});
+
+// =====================================================================
 // Live run status for the commuter Route screen (mock M4 killed here)
 // =====================================================================
 
