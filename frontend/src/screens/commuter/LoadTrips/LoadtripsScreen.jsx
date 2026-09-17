@@ -42,7 +42,7 @@ export default function LoadtripsScreen() {
   const [planId, setPlanId] = useState("");
 
   const [quote, setQuote] = useState(null);
-  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [, setQuoteBusy] = useState(false);
 
   const [cards, setCards] = useState(INITIAL_CARDS);
   const [selectedCardId, setSelectedCardId] = useState(INITIAL_CARDS[0].id);
@@ -220,7 +220,6 @@ export default function LoadtripsScreen() {
         >
           {phase === "route" && (
             <RouteStep
-              routes={routes}
               origins={origins}
               destinations={destinations}
               from={from}

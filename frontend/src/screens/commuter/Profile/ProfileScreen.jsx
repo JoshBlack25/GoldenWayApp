@@ -5,10 +5,9 @@ import { useTrips } from "../../../context/trip";
 export default function ProfileScreen() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { rides, transactions, card, passExpiresOn, cardBusy } = useTrips();
+  const { rides, transactions } = useTrips();
 
-  const name =
-    user?.displayName || user?.email?.split("@")[0] || "Commuter";
+  const name = user?.displayName || user?.email?.split("@")[0] || "Commuter";
   const firstName = user?.firstName || name.split(" ")[0];
   const surname = user?.surname || name.split(" ").slice(1).join(" ") || "";
   const lastRide = transactions.find((tx) => tx.type === "ride");
@@ -17,9 +16,6 @@ export default function ProfileScreen() {
     : new Date().getFullYear();
   const maskedId = user?.idNumber
     ? `${user.idNumber.slice(0, 6)} ${user.idNumber.slice(6, 10)} ${user.idNumber.slice(10)}`
-    : "—";
-  const genderLabel = user?.gender
-    ? user.gender.charAt(0) + user.gender.slice(1).toLowerCase()
     : "—";
 
   function handleLogout() {
@@ -58,7 +54,14 @@ export default function ProfileScreen() {
       </div>
 
       {/* Gold pass card */}
-      <div className="mt-4 rounded-2xl px-4 py-3.5 flex items-center justify-between text-ink-900" style={{ background: "linear-gradient(135deg, #ffd873 0%, #ffc52e 45%, #f0b429 100%)", boxShadow: "var(--shadow-glow-gold)" }}>
+      <div
+        className="mt-4 rounded-2xl px-4 py-3.5 flex items-center justify-between text-ink-900"
+        style={{
+          background:
+            "linear-gradient(135deg, #ffd873 0%, #ffc52e 45%, #f0b429 100%)",
+          boxShadow: "var(--shadow-glow-gold)",
+        }}
+      >
         <div>
           <p className="text-[9px] font-bold tracking-[0.18em] text-ink-900/70">
             GOLDENWAY PASS
@@ -84,7 +87,6 @@ export default function ProfileScreen() {
       <div className="rounded-2xl border border-ink-900/5 bg-white px-4 py-1 flex flex-col divide-y divide-ink-900/5">
         <DetailRow label="Name" value={firstName} />
         <DetailRow label="Surname" value={surname || "—"} />
-        <DetailRow label="Gender" value={genderLabel} />
         <DetailRow
           label="DOB"
           value={
@@ -245,16 +247,31 @@ function DetailRow({ label, value }) {
 
 function PersonIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <circle cx="12" cy="8" r="3.5" />
-      <path d="M4.5 20c1.5-4 5-5.5 7.5-5.5s6 1.5 7.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4.5 20c1.5-4 5-5.5 7.5-5.5s6 1.5 7.5 5.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function QrIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-ink-900/80" fill="currentColor" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 text-ink-900/80"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm9-2h2v2h-2v-2zm4 0h3v2h-2v2h-2v-2h1v-2zm-4 4h2v3h-2v-3zm4 1h3v2h-3v-2z" />
     </svg>
   );
@@ -262,7 +279,13 @@ function QrIcon() {
 
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -271,24 +294,50 @@ function MailIcon() {
 
 function PhoneIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M6.5 3.5c.6 0 1.1.4 1.3 1l1 2.6c.2.5 0 1.1-.3 1.5L7 10c1 2.3 2.7 4 5 5l1.4-1.5c.4-.4 1-.5 1.5-.3l2.6 1c.6.2 1 .7 1 1.3v2.2c0 1-.9 1.7-1.9 1.5C10.4 18.4 5.6 13.6 4.2 7.4 4 6.4 4.7 5.5 5.7 5.5h.8z" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M6.5 3.5c.6 0 1.1.4 1.3 1l1 2.6c.2.5 0 1.1-.3 1.5L7 10c1 2.3 2.7 4 5 5l1.4-1.5c.4-.4 1-.5 1.5-.3l2.6 1c.6.2 1 .7 1 1.3v2.2c0 1-.9 1.7-1.9 1.5C10.4 18.4 5.6 13.6 4.2 7.4 4 6.4 4.7 5.5 5.7 5.5h.8z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function CheckCircleIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <circle cx="12" cy="12" r="9" />
-      <path d="M8.5 12.5l2.3 2.3L15.5 10" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M8.5 12.5l2.3 2.3L15.5 10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function BusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <rect x="4" y="5" width="16" height="12" rx="2.5" />
       <path d="M4 12h16M8 17v2M16 17v2" strokeLinecap="round" />
     </svg>
@@ -297,7 +346,13 @@ function BusIcon() {
 
 function AlertIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path d="M12 3l10 18H2L12 3z" strokeLinejoin="round" />
       <path d="M12 10v4M12 17.5v.01" strokeLinecap="round" />
     </svg>
@@ -306,8 +361,18 @@ function AlertIcon() {
 
 function LogoutIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h10" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

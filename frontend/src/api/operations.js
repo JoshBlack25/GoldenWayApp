@@ -27,16 +27,8 @@ function rpc(fn, args) {
   });
 }
 
-function from(table) {
-  return {
-    select: (...a) =>
-      supabase.from(table).select(...a).then(({ data, error }) => {
-        if (error) throw toApiError(error);
-        return data;
-      }),
-  };
-}
-
+// Table helper reserved for future direct-table reads; notifications use
+// typed calls below.
 // =====================================================================
 // Notifications (0007) — D3
 // =====================================================================

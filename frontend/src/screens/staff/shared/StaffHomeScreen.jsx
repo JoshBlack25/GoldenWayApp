@@ -318,55 +318,9 @@ function InspectorHero() {
   );
 }
 
-/* --- CLERK: today's cash is the hero (K1) --- */
-function ClerkHero() {
-  const [sales, setSales] = useState(null);
-  const [queue, setQueue] = useState(null);
-  useEffect(() => {
-    let live = true;
-    Promise.allSettled([
-      fetchKioskSalesSummary(),
-      fetchPendingConcessions(),
-    ]).then(([s, q]) => {
-      if (!live) return;
-      if (s.status === "fulfilled") setSales(s.value);
-      if (q.status === "fulfilled") setQueue(q.value.length);
-    });
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  return (
-    <>
-      <HeroCard
-        chip="CASH TODAY"
-        value={sales ? `R${(sales.cents / 100).toFixed(2)}` : "…"}
-        label={
-          sales
-            ? `${sales.orders} load${sales.orders === 1 ? "" : "s"} + ${sales.fees} card fee${sales.fees === 1 ? "" : "s"}`
-            : "Counting the drawer"
-        }
-        sub="Tap to open the kiosk"
-        to="/staff/kiosk"
-      />
-      <MetricChipRow
-        items={[
-          {
-            label: "CONCESSIONS QUEUE",
-            value: queue ?? "…",
-            to: "/staff/concessions",
-          },
-          {
-            label: "CARD FEES TODAY",
-            value: sales ? sales.fees : "…",
-            to: "/staff/kiosk",
-          },
-        ]}
-      />
-    </>
-  );
-}
+/* --- CLERK: today's cash is the hero (K1) — implemented in
+      screens/staff/clerk/ClerkHomeScreen.jsx (KioskHome); removed the
+      duplicate here which referenced unimported APIs. --- */
 
 /* --- ADMIN: pending onboarding is the hero; network strip secondary --- */
 function AdminHero() {

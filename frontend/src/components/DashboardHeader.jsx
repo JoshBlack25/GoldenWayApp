@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
-import { useNotifications } from "../context/NotificationProvider";
+import { useNotifications } from "../context/useNotifications";
 
 /**
  * Top bar shown on every dashboard screen — avatar left, wordmark, and a

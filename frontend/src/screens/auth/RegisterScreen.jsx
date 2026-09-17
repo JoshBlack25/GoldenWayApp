@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/auth";
@@ -10,6 +10,13 @@ import { ApiError } from "../../api/client";
  * ((+27|0)xxxxxxxxx), a 13-digit SA ID with a valid Luhn checksum, age ≥ 5,
  * and unique email/ID (409). Field-level errors come back as 400
  * { field: "message" } and are shown next to each input.
+ *
+ * DOB auto-fill: SA IDs encode YYMMDD as the first 6 digits. We derive and
+ * populate Date of Birth from that as the user types the ID, but stop
+ * overwriting it the moment they edit DOB manually.
+ *
+ * Gender removed (2026-09) — dropped from public.commuters; see
+ * supabase/migrations/0014_remove_gender.sql.
  */
 
 function formatIdNumber(raw) {
@@ -37,6 +44,31 @@ function luhnValid(numStr) {
   return sum % 10 === 0;
 }
 
+/** Derive an ISO date (YYYY-MM-DD) from the first 6 digits of an SA ID, or "" if not yet valid/complete. */
+function deriveDobFromId(idDigits) {
+  if (idDigits.length < 6) return "";
+  const yy = idDigits.slice(0, 2);
+  const mm = idDigits.slice(2, 4);
+  const dd = idDigits.slice(4, 6);
+  const month = Number(mm);
+  const day = Number(dd);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return "";
+
+  const currentYY = new Date().getFullYear() % 100;
+  const century = Number(yy) > currentYY ? 1900 : 2000;
+  const year = century + Number(yy);
+
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  )
+    return "";
+
+  return `${year}-${mm}-${dd}`;
+}
+
 function splitName(fullName) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { firstName: "", surname: "" };
@@ -52,8 +84,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [idNumber, setIdNumber] = useState("");
-  const [gender, setGender] = useState("FEMALE");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [dobSource, setDobSource] = useState("empty"); // "empty" | "auto" | "manual"
   const [concessionType, setConcessionType] = useState("NONE");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -67,8 +99,23 @@ export default function RegisterScreen() {
   const idError = useMemo(() => {
     if (!idDigits) return "";
     if (idDigits.length !== 13) return "SA ID must be 13 digits";
-    if (!luhnValid(idDigits)) return "This ID number fails the checksum — please check it";
+    if (!luhnValid(idDigits))
+      return "This ID number fails the checksum — please check it";
     return "";
+  }, [idDigits]);
+
+  // Auto-fill DOB from the ID as it's typed, unless the user has manually edited DOB.
+  useEffect(() => {
+    if (dobSource === "manual") return;
+    const derived = deriveDobFromId(idDigits);
+    if (derived) {
+      setDateOfBirth(derived);
+      setDobSource("auto");
+    } else if (dobSource === "auto" && idDigits.length < 6) {
+      setDateOfBirth("");
+      setDobSource("empty");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idDigits]);
 
   const minDob = useMemo(() => {
@@ -112,7 +159,6 @@ export default function RegisterScreen() {
         email: email.trim(),
         phone: phone.trim(),
         password,
-        gender,
         dateOfBirth,
         idNumber: idDigits,
         concessionType,
@@ -124,7 +170,11 @@ export default function RegisterScreen() {
           setError(
             "An account already exists with this email or ID number. Try logging in instead.",
           );
-        } else if (err.status === 400 && err.fieldErrors && Object.keys(err.fieldErrors).length) {
+        } else if (
+          err.status === 400 &&
+          err.fieldErrors &&
+          Object.keys(err.fieldErrors).length
+        ) {
           setFieldErrors(err.fieldErrors);
           setError("Please fix the highlighted fields.");
         } else {
@@ -228,38 +278,32 @@ export default function RegisterScreen() {
             error={fieldErrors.idNumber || idError}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <SelectField
-              label="Gender"
-              value={gender}
-              onChange={setGender}
-              options={[
-                { value: "FEMALE", label: "Female" },
-                { value: "MALE", label: "Male" },
-                { value: "OTHER", label: "Other" },
-              ]}
-            />
-            <SelectField
-              label="Concession"
-              value={concessionType}
-              onChange={setConcessionType}
-              options={[
-                { value: "NONE", label: "None" },
-                { value: "STUDENT", label: "Student −15%" },
-                { value: "PENSIONER", label: "Pensioner −20%" },
-              ]}
-            />
-          </div>
+          <SelectField
+            label="Concession"
+            value={concessionType}
+            onChange={setConcessionType}
+            options={[
+              { value: "NONE", label: "None" },
+              { value: "STUDENT", label: "Student −15%" },
+              { value: "PENSIONER", label: "Pensioner −20%" },
+            ]}
+          />
 
           <Field
             label="Date of Birth"
             type="date"
             value={dateOfBirth}
-            onChange={setDateOfBirth}
+            onChange={(v) => {
+              setDateOfBirth(v);
+              setDobSource("manual");
+            }}
             min={minDob}
             max={maxDob}
             icon={<CalendarIcon />}
             error={fieldErrors.dateOfBirth}
+            hint={
+              dobSource === "auto" ? "Auto-filled from your ID number" : null
+            }
           />
 
           <div className="flex flex-col gap-1.5">
@@ -357,15 +401,12 @@ function Field({
   inputMode,
   min,
   max,
+  hint,
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[13px] font-medium text-ink-700">{label}</label>
-      <div
-        className={`field-shell ${
-          error ? "!border-red-400" : ""
-        }`}
-      >
+      <div className={`field-shell ${error ? "!border-red-400" : ""}`}>
         {icon}
         <input
           type={type}
@@ -379,7 +420,11 @@ function Field({
           className="w-full py-3.5 text-[15px] text-ink-900 placeholder:text-slate-400 bg-transparent outline-none"
         />
       </div>
-      {error && <p className="text-[11px] text-red-600">{error}</p>}
+      {error ? (
+        <p className="text-[11px] text-red-600">{error}</p>
+      ) : hint ? (
+        <p className="text-[11px] text-gold-600 font-medium">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -471,7 +516,10 @@ function IdIcon() {
     >
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <circle cx="9" cy="11" r="2" />
-      <path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14.5 9.5H18M14.5 13H18" strokeLinecap="round" />
+      <path
+        d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14.5 9.5H18M14.5 13H18"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

@@ -3,7 +3,6 @@ import { AuthContext } from "./auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchMyCommuterProfile,
-  loginCommuter,
   logoutCommuter,
   registerCommuter,
 } from "../api/goldenway";
