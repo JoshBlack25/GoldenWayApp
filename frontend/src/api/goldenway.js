@@ -26,8 +26,13 @@ function toApiError(error, fallbackStatus = 400) {
 
   // Our RPCs raise "field: human message" for validation failures.
   const fieldMatch = /^([a-zA-Z]+):\s*(.+)$/.exec(message);
-  if (code === "23505" || /already exists|already registered|duplicate/i.test(message)) {
-    const data = fieldMatch ? { [fieldMatch[1]]: fieldMatch[2] } : { error: message };
+  if (
+    code === "23505" ||
+    /already exists|already registered|duplicate/i.test(message)
+  ) {
+    const data = fieldMatch
+      ? { [fieldMatch[1]]: fieldMatch[2] }
+      : { error: message };
     return new ApiError(409, data);
   }
   if (fieldMatch) {
@@ -67,7 +72,9 @@ function mapCommuterRow(row) {
 }
 
 export async function fetchMyCommuterProfile() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) return null;
   const { data, error } = await supabase
     .from("commuters")
@@ -79,12 +86,26 @@ export async function fetchMyCommuterProfile() {
 }
 
 export async function registerCommuter(payload) {
-  const { email, password, firstName, surname, phone, gender, dateOfBirth, idNumber, concessionType } = payload;
+  const {
+    email,
+    password,
+    firstName,
+    surname,
+    phone,
+    dateOfBirth,
+    idNumber,
+    concessionType,
+  } = payload;
 
-  const { error: signUpError } = await supabase.auth.signUp({ email, password });
+  const { error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
   if (signUpError) {
     if (/already registered|already exists/i.test(signUpError.message)) {
-      throw new ApiError(409, { email: "An account already exists with this email" });
+      throw new ApiError(409, {
+        email: "An account already exists with this email",
+      });
     }
     throw new ApiError(400, { error: signUpError.message });
   }
@@ -96,7 +117,6 @@ export async function registerCommuter(payload) {
     p_first_name: firstName,
     p_surname: surname,
     p_phone: phone,
-    p_gender: gender,
     p_date_of_birth: dateOfBirth,
     p_id_number: idNumber,
     p_concession_type: concessionType,
@@ -109,7 +129,8 @@ export async function loginCommuter(email, password) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw toApiError(error, 401);
   const profile = await fetchMyCommuterProfile();
-  if (!profile) throw new ApiError(401, { error: "No commuter profile for this account" });
+  if (!profile)
+    throw new ApiError(401, { error: "No commuter profile for this account" });
   return profile;
 }
 
@@ -190,7 +211,12 @@ export async function topupsForCard(cardNumber) {
   }));
 }
 
-export async function createTopupOrder(cardNumber, productCode, routeCode, amountCents) {
+export async function createTopupOrder(
+  cardNumber,
+  productCode,
+  routeCode,
+  amountCents,
+) {
   const row = await rpc("create_topup_order", {
     p_card_number: cardNumber,
     p_product_code: productCode,
@@ -235,7 +261,9 @@ export async function fetchRoutesFromDb() {
 }
 
 export async function fetchProductsForRouteFromDb(routeCode) {
-  const { data, error } = await supabase.rpc("fares_products_for_route", { p_route_code: routeCode });
+  const { data, error } = await supabase.rpc("fares_products_for_route", {
+    p_route_code: routeCode,
+  });
   if (error) throw toApiError(error);
   return (data || []).map((p) => ({
     code: p.code,
@@ -274,7 +302,11 @@ export async function fetchQuoteFromDb(routeCode, productCode, concessionType) {
  * mapped from the JS date on the caller side. Returns ISO time strings
  * ("05:15:00") sorted ascending within the requested direction.
  */
-export async function fetchDepartures(routeCode, direction = "OUTBOUND", dayType = "WEEKDAY") {
+export async function fetchDepartures(
+  routeCode,
+  direction = "OUTBOUND",
+  dayType = "WEEKDAY",
+) {
   const { data, error } = await supabase
     .from("route_departures")
     .select("departure_time")
@@ -324,10 +356,20 @@ export async function fetchStops() {
  * Only the fields passed are written; id/email/id_number are immutable.
  */
 export async function updateMyProfile(patch) {
-  const allowed = ["first_name", "surname", "phone", "gender", "date_of_birth", "concession_type"];
+  const allowed = [
+    "first_name",
+    "surname",
+    "phone",
+    "date_of_birth",
+    "concession_type",
+  ];
   const row = {};
   for (const key of allowed) {
-    if (patch?.[key] !== undefined && patch?.[key] !== null && patch[key] !== "") {
+    if (
+      patch?.[key] !== undefined &&
+      patch?.[key] !== null &&
+      patch[key] !== ""
+    ) {
       row[key] = patch[key];
     }
   }

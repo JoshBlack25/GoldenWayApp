@@ -13,6 +13,21 @@
  * straight from these tables.
  */
 
+import {
+  HomeIcon,
+  TicketIcon,
+  CardIcon,
+  HistoryIcon,
+  ProfileIcon,
+  ScanIcon,
+  BusIcon,
+  InboxIcon,
+  KioskIcon,
+  PeopleIcon,
+  CatalogIcon,
+  AlertIcon,
+} from "./navigationIcons";
+
 // --- shared icon set (identical glyphs across both surfaces) ----------
 export const Icons = {
   home: HomeIcon,

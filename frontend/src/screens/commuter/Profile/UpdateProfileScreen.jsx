@@ -8,13 +8,11 @@ export default function UpdateProfileScreen() {
   const [form, setForm] = useState({
     firstName: "John",
     surname: "Doe",
-    gender: "Male",
     dob: "15 May 1990",
     idNumber: "900515 5000 081",
     email: "johndoe@gmail.com",
     phone: "+27 94 678 9972",
   });
-
   const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
 
   return (
@@ -23,7 +21,9 @@ export default function UpdateProfileScreen() {
       <div className="flex items-center justify-between pb-4">
         <button
           type="button"
-          onClick={() => (step === 1 ? navigate("/profile") : setStep(step - 1))}
+          onClick={() =>
+            step === 1 ? navigate("/profile") : setStep(step - 1)
+          }
           className="flex items-center gap-1.5 text-[14px] font-semibold text-ink-900"
         >
           <span className="text-xl leading-none">&larr;</span> Update Profile
@@ -50,12 +50,26 @@ export default function UpdateProfileScreen() {
       </div>
 
       {step === 1 && (
-        <StepYourDetails form={form} set={set} onNext={() => setStep(2)} onCancel={() => navigate("/profile")} />
+        <StepYourDetails
+          form={form}
+          set={set}
+          onNext={() => setStep(2)}
+          onCancel={() => navigate("/profile")}
+        />
       )}
       {step === 2 && (
-        <StepContactDetails form={form} onNext={() => setStep(3)} onCancel={() => navigate("/profile")} />
+        <StepContactDetails
+          form={form}
+          onNext={() => setStep(3)}
+          onCancel={() => navigate("/profile")}
+        />
       )}
-      {step === 3 && <StepSuccess name={`${form.firstName} ${form.surname}`} onDone={() => navigate("/profile")} />}
+      {step === 3 && (
+        <StepSuccess
+          name={`${form.firstName} ${form.surname}`}
+          onDone={() => navigate("/profile")}
+        />
+      )}
     </div>
   );
 }
@@ -81,35 +95,37 @@ function StepDot({ n, current }) {
 
 function StepYourDetails({ form, set, onNext, onCancel }) {
   return (
-    <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22 }} className="flex flex-col flex-1">
+    <motion.div
+      initial={{ opacity: 0, x: 12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.22 }}
+      className="flex flex-col flex-1"
+    >
       <div className="rounded-2xl border border-ink-900/5 bg-white px-4 py-5">
         <h1 className="font-display text-xl font-bold text-ink-900 mb-4">
           Your Details
         </h1>
         <div className="flex flex-col gap-4">
-          <WizardField label="FIRST NAME" value={form.firstName} onChange={set("firstName")} />
-          <WizardField label="SURNAME" value={form.surname} onChange={set("surname")} />
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] text-slate-500 mb-1.5">
-              GENDER
-            </p>
-            <div className="grid grid-cols-2 rounded-xl border border-gold-500/30 overflow-hidden">
-              {["Male", "Female"].map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => set("gender")(g)}
-                  className={`py-3 text-[13px] font-semibold transition-colors ${
-                    form.gender === g ? "bg-gold-400 text-ink-900" : "bg-white text-slate-500"
-                  }`}
-                >
-                  {g === "Male" ? "\u2642" : "\u2640"} {g}
-                </button>
-              ))}
-            </div>
-          </div>
-          <WizardField label="DATE OF BIRTH" value={form.dob} onChange={set("dob")} />
-          <WizardField label="ID NUMBER" value={form.idNumber} onChange={set("idNumber")} />
+          <WizardField
+            label="FIRST NAME"
+            value={form.firstName}
+            onChange={set("firstName")}
+          />
+          <WizardField
+            label="SURNAME"
+            value={form.surname}
+            onChange={set("surname")}
+          />
+          <WizardField
+            label="DATE OF BIRTH"
+            value={form.dob}
+            onChange={set("dob")}
+          />
+          <WizardField
+            label="ID NUMBER"
+            value={form.idNumber}
+            onChange={set("idNumber")}
+          />
         </div>
       </div>
 
@@ -121,7 +137,11 @@ function StepYourDetails({ form, set, onNext, onCancel }) {
       >
         Next &rarr;
       </motion.button>
-      <button type="button" onClick={onCancel} className="mt-3 text-[13px] font-medium text-slate-500">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="mt-3 text-[13px] font-medium text-slate-500"
+      >
         Cancel
       </button>
 
@@ -143,7 +163,12 @@ function StepYourDetails({ form, set, onNext, onCancel }) {
 
 function StepContactDetails({ form, onNext, onCancel }) {
   return (
-    <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22 }} className="flex flex-col flex-1">
+    <motion.div
+      initial={{ opacity: 0, x: 12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.22 }}
+      className="flex flex-col flex-1"
+    >
       <div className="rounded-2xl border border-ink-900/5 bg-white px-4 py-5">
         <h1 className="font-display text-xl font-bold text-ink-900">
           Contact Details
@@ -158,7 +183,9 @@ function StepContactDetails({ form, onNext, onCancel }) {
             </p>
             <div className="field-shell">
               <MailIcon />
-              <span className="py-3.5 text-[14px] text-ink-900">{form.email}</span>
+              <span className="py-3.5 text-[14px] text-ink-900">
+                {form.email}
+              </span>
             </div>
           </div>
           <div>
@@ -201,7 +228,11 @@ function StepContactDetails({ form, onNext, onCancel }) {
       >
         Next &rarr;
       </motion.button>
-      <button type="button" onClick={onCancel} className="mt-3 text-[13px] font-medium text-slate-500">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="mt-3 text-[13px] font-medium text-slate-500"
+      >
         Cancel
       </button>
     </motion.div>
@@ -210,16 +241,36 @@ function StepContactDetails({ form, onNext, onCancel }) {
 
 function StepSuccess({ name, onDone }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex flex-col flex-1">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="flex flex-col flex-1"
+    >
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 220, damping: 14, delay: 0.1 }}
+          transition={{
+            type: "spring",
+            stiffness: 220,
+            damping: 14,
+            delay: 0.1,
+          }}
           className="h-24 w-24 rounded-full bg-emerald-50 flex items-center justify-center"
         >
-          <svg viewBox="0 0 24 24" className="h-11 w-11" fill="none" stroke="#16a34a" strokeWidth="2.4">
-            <path d="M5 12.5l4.5 4.5L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            viewBox="0 0 24 24"
+            className="h-11 w-11"
+            fill="none"
+            stroke="#16a34a"
+            strokeWidth="2.4"
+          >
+            <path
+              d="M5 12.5l4.5 4.5L19 7.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </motion.div>
 
@@ -253,8 +304,16 @@ function StepSuccess({ name, onDone }) {
           <div className="pt-2 flex items-center justify-between">
             <span className="text-[12px] text-slate-500">Timestamp</span>
             <span className="text-[12px] font-semibold text-ink-900">
-              {new Date().toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })} &bull;{" "}
-              {new Date().toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}
+              {new Date().toLocaleDateString("en-ZA", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}{" "}
+              &bull;{" "}
+              {new Date().toLocaleTimeString("en-ZA", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           </div>
         </div>
@@ -268,7 +327,10 @@ function StepSuccess({ name, onDone }) {
       >
         BACK TO PROFILE
       </motion.button>
-      <button type="button" className="mt-3 text-[13px] font-medium text-slate-500">
+      <button
+        type="button"
+        className="mt-3 text-[13px] font-medium text-slate-500"
+      >
         View Transaction History
       </button>
     </motion.div>
@@ -293,7 +355,13 @@ function WizardField({ label, value, onChange }) {
 
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -302,15 +370,31 @@ function MailIcon() {
 
 function PhoneIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M6.5 3.5c.6 0 1.1.4 1.3 1l1 2.6c.2.5 0 1.1-.3 1.5L7 10c1 2.3 2.7 4 5 5l1.4-1.5c.4-.4 1-.5 1.5-.3l2.6 1c.6.2 1 .7 1 1.3v2.2c0 1-.9 1.7-1.9 1.5C10.4 18.4 5.6 13.6 4.2 7.4 4 6.4 4.7 5.5 5.7 5.5h.8z" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M6.5 3.5c.6 0 1.1.4 1.3 1l1 2.6c.2.5 0 1.1-.3 1.5L7 10c1 2.3 2.7 4 5 5l1.4-1.5c.4-.4 1-.5 1.5-.3l2.6 1c.6.2 1 .7 1 1.3v2.2c0 1-.9 1.7-1.9 1.5C10.4 18.4 5.6 13.6 4.2 7.4 4 6.4 4.7 5.5 5.7 5.5h.8z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function InfoIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600 shrink-0 mt-0.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8h.01M12 11v5" strokeLinecap="round" />
     </svg>
@@ -319,7 +403,13 @@ function InfoIcon() {
 
 function BusGlyph() {
   return (
-    <svg viewBox="0 0 24 24" className="h-16 w-16 absolute right-4 bottom-3 text-gold-400/80" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-16 w-16 absolute right-4 bottom-3 text-gold-400/80"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    >
       <rect x="4" y="4" width="16" height="13" rx="2.5" />
       <path d="M4 11h16M8 17v2.5M16 17v2.5" strokeLinecap="round" />
       <circle cx="8.5" cy="14" r="0.6" fill="currentColor" />

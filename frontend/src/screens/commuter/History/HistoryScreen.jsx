@@ -5,7 +5,7 @@ import { useTrips } from "../../../context/trip";
 
 export default function HistoryScreen() {
   const navigate = useNavigate();
-  const { transactions, rides } = useTrips();
+  const { transactions } = useTrips();
   const [query, setQuery] = useState("");
 
   // Real stats from the live feed: ride events this month + hours on the road

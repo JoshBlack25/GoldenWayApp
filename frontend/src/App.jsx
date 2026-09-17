@@ -79,6 +79,7 @@ const staffScreens = {
   alerts: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
+  timetable: { element: <TimetableScreen hideCta />, roles: ["DRIVER", "ADMIN"] },
   inbox: { element: <InboxScreen />, roles: ["AGENT", "ADMIN"] },
   chats: { element: <ChatScreen />, roles: ["AGENT", "ADMIN"] },
   kiosk: { element: <KioskScreen />, roles: ["CLERK", "ADMIN"] },

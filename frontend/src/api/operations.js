@@ -27,16 +27,8 @@ function rpc(fn, args) {
   });
 }
 
-function from(table) {
-  return {
-    select: (...a) =>
-      supabase.from(table).select(...a).then(({ data, error }) => {
-        if (error) throw toApiError(error);
-        return data;
-      }),
-  };
-}
-
+// Table helper reserved for future direct-table reads; notifications use
+// typed calls below.
 // =====================================================================
 // Notifications (0007) — D3
 // =====================================================================
@@ -294,7 +286,7 @@ export async function fetchMyRuns() {
     .from("vehicle_runs")
     .select("*")
     .order("started_at", { ascending: false })
-    .limit(20);
+    .limit(60); // generous enough to cover a week of multi-run shifts for on-time stats
   if (error) throw toApiError(error);
   return (data || []).map(mapRun);
 }
@@ -324,8 +316,13 @@ export async function fetchBuses() {
   return data || [];
 }
 
-export const startRun = (routeCode, busId, direction) =>
-  rpc("start_run", { p_route_code: routeCode, p_bus_id: busId, p_direction: direction || "OUTBOUND" });
+export const startRun = (routeCode, busId, direction, note = null) =>
+  rpc("start_run", {
+    p_route_code: routeCode,
+    p_bus_id: busId,
+    p_direction: direction || "OUTBOUND",
+    p_note: note,
+  });
 
 export const reportRunStatus = (runId, status, delayMinutes = 0, note = null) =>
   rpc("report_run_status", {
@@ -415,6 +412,13 @@ export async function fetchStaffTeam() {
 
 export const setStaffActive = (staffId, active) =>
   rpc("set_staff_active", { p_staff_id: staffId, p_active: active });
+
+// =====================================================================
+// Staff — self-service account (0014): Delete(=deactivate). Update
+// (name/surname/phone/password) is updateMyStaffDetails in api/staff.js.
+// =====================================================================
+
+export const deactivateMyAccount = () => rpc("deactivate_my_account", {});
 
 // =====================================================================
 // Live run status for the commuter Route screen (mock M4 killed here)
