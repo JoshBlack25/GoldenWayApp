@@ -1,22 +1,43 @@
 import { useState } from "react";
 import { useAuth } from "../../../context/auth";
 import { updateMyStaffDetails } from "../../../api/staff";
+import { deactivateMyAccount } from "../../../api/operations";
 
 /**
  * Staff profile — the "Profile" tab every staff role shares (Home-first
- * nav skeleton). Self-service "My details" (migration 0013): name,
- * surname, phone, and an opt-in password change that requires the
- * CURRENT password (verified server-side) plus confirmation of the new
- * one. Commuters keep their own richer profile screen.
+ * nav skeleton). Full CRUD on the account itself:
+ *   Create → /staff-signup request, admin-approved
+ *   Read   → loaded below (my_profile_type carries phone too — 0015)
+ *   Update → EditDetailsCard: name/surname/phone + opt-in password change
+ *            (0013 design, current password re-verified server-side)
+ *   Delete → "Deactivate my account" (soft-delete — nothing is
+ *            hard-deleted anywhere else in this app either; runs/cards
+ *            go through a status flag, not DELETE)
  */
 export default function StaffProfileScreen() {
   const { user, logout, setUser } = useAuth();
-  const [confirm, setConfirm] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivateError, setDeactivateError] = useState("");
 
   const rows = [
     ["ROLE", user?.role || "—"],
     ["EMAIL", user?.email || "—"],
   ];
+
+  async function handleDeactivate() {
+    if (deactivating) return;
+    setDeactivating(true);
+    setDeactivateError("");
+    try {
+      await deactivateMyAccount();
+      await logout();
+    } catch (err) {
+      setDeactivateError(err?.message || "Could not deactivate your account.");
+      setDeactivating(false);
+    }
+  }
 
   return (
     <div className="px-5 pt-2">
@@ -45,41 +66,53 @@ export default function StaffProfileScreen() {
         </p>
         <button
           type="button"
-          onClick={() => setConfirm(true)}
-          className="mt-4 w-full rounded-xl border border-red-500/30 py-3 text-[13px] font-semibold text-red-600 hover:bg-red-50 active:scale-[0.99]"
+          onClick={() => setConfirmSignOut(true)}
+          className="mt-4 w-full rounded-xl border border-ink-900/15 py-3 text-[13px] font-semibold text-ink-900/70 hover:bg-cream-200 active:scale-[0.99]"
         >
           Sign out
         </button>
       </div>
 
-      {confirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/45 px-6"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setConfirm(false);
-          }}
+      <div className="mt-4 rounded-2xl border border-red-400/25 bg-white p-5">
+        <p className="eyebrow text-red-500/80">DANGER ZONE</p>
+        <p className="mt-2 text-[12.5px] text-ink-900/55">
+          Deactivating removes your access to the staff console immediately. An admin can reactivate your account later.
+          {user?.role === "DRIVER" && " You can't deactivate while a run is in progress — end it first."}
+        </p>
+        {deactivateError && (
+          <p role="alert" className="mt-3 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-[12px] text-red-600">
+            {deactivateError}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => setConfirmDeactivate(true)}
+          className="mt-4 w-full rounded-xl border border-red-500/30 py-3 text-[13px] font-semibold text-red-600 hover:bg-red-50 active:scale-[0.99]"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-ink-900/10 bg-white p-6" style={{ boxShadow: "var(--shadow-card-lg)" }}>
-            <h3 className="font-display text-[16px] font-bold text-ink-900">Sign out?</h3>
-            <p className="mt-1.5 text-[12.5px] text-ink-900/60">You'll return to the login screen.</p>
-            <div className="mt-5 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setConfirm(false)}
-                className="flex-1 rounded-xl border border-ink-900/15 py-2.5 text-[12.5px] font-semibold text-ink-900/70 hover:bg-cream-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={logout}
-                className="flex-1 rounded-xl bg-ink-900 py-2.5 text-[12.5px] font-bold text-cream-50"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
+          Deactivate my account
+        </button>
+      </div>
+
+      {confirmSignOut && (
+        <ConfirmDialog
+          title="Sign out?"
+          body="You'll return to the login screen."
+          confirmLabel="Sign out"
+          onCancel={() => setConfirmSignOut(false)}
+          onConfirm={logout}
+        />
+      )}
+
+      {confirmDeactivate && (
+        <ConfirmDialog
+          danger
+          title="Deactivate your account?"
+          body="You'll be signed out immediately and won't be able to log back in until an admin reactivates you."
+          confirmLabel={deactivating ? "Deactivating…" : "Deactivate"}
+          confirmDisabled={deactivating}
+          onCancel={() => setConfirmDeactivate(false)}
+          onConfirm={handleDeactivate}
+        />
       )}
     </div>
   );
@@ -274,5 +307,40 @@ function PwField({ label, value, onChange, autoComplete, invalid }) {
         }`}
       />
     </label>
+  );
+}
+
+function ConfirmDialog({ title, body, confirmLabel, confirmDisabled, danger, onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/45 px-6"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-ink-900/10 bg-white p-6" style={{ boxShadow: "var(--shadow-card-lg)" }}>
+        <h3 className="font-display text-[16px] font-bold text-ink-900">{title}</h3>
+        <p className="mt-1.5 text-[12.5px] text-ink-900/60">{body}</p>
+        <div className="mt-5 flex gap-2.5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-ink-900/15 py-2.5 text-[12.5px] font-semibold text-ink-900/70 hover:bg-cream-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl py-2.5 text-[12.5px] font-bold disabled:opacity-60 ${
+              danger ? "bg-red-600 text-white" : "bg-ink-900 text-cream-50"
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

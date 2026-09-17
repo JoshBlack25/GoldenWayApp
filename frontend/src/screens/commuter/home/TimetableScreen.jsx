@@ -47,7 +47,7 @@ function routeLabel(r) {
   return r.label || r.name || `${r.origin} → ${r.destination}`;
 }
 
-export default function TimetableScreen() {
+export default function TimetableScreen({ hideCta = false }) {
   const navigate = useNavigate();
   const [routes, setRoutes] = useState([]);
   const [routeCode, setRouteCode] = useState("");
@@ -236,13 +236,15 @@ export default function TimetableScreen() {
             far.
           </p>
 
-          <button
-            type="button"
-            onClick={() => navigate("/load-trips")}
-            className="btn-gold w-full py-3.5 text-[14px]"
-          >
-            Load trips for this route →
-          </button>
+          {!hideCta && (
+            <button
+              type="button"
+              onClick={() => navigate("/load-trips")}
+              className="btn-gold w-full py-3.5 text-[14px]"
+            >
+              Load trips for this route →
+            </button>
+          )}
         </>
       )}
     </div>
