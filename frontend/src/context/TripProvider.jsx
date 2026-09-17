@@ -11,6 +11,8 @@ import {
   topupsForCard,
 } from "../api/goldenway";
 import { supabase } from "../lib/supabaseClient";
+import { productLabel } from "../utils/productLabels";
+import { clearFareCache } from "../screens/commuter/LoadTrips/data/loadTripsData";
 
 /**
  * Real data for the whole dashboard, backed directly by Supabase.
@@ -46,20 +48,6 @@ function metaFor(iso) {
   if (then.toDateString() === yesterday.toDateString())
     return `Yesterday, ${fmt.format(then)}`;
   return fmt.format(then);
-}
-
-/** "GOEASY-5" → "Go Easy 5-Ride", "WEEKLY" → "Weekly Pass", … */
-function productLabel(code) {
-  if (!code) return "GoldenWay Pass";
-  const upper = code.toUpperCase();
-  if (upper === "WEEKLY") return "Weekly Pass";
-  if (upper === "MONTHLY") return "Monthly Pass";
-  const m = upper.match(/^([A-Z]+)-?(\d+)$/);
-  if (m) {
-    const family = m[1] === "GOEASY" ? "Go Easy" : m[1];
-    return `${family} ${m[2]}-Ride`;
-  }
-  return upper;
 }
 
 /** Newest valid loaded product → the "pass" card the UI shows. */
@@ -124,6 +112,9 @@ export default function TripProvider({ children }) {
   const [cardBusy, setCardBusy] = useState(false);
   const [rides, setRides] = useState(0);
   const [transactions, setTransactions] = useState([]);
+  // Load error for the initial dashboard fetch — surfaced by screens so a
+  // backend/network failure never looks like an empty account.
+  const [loadError, setLoadError] = useState(null);
 
   const pass = useMemo(() => derivePass(card), [card]);
   const passExpiresOn = useMemo(() => {
@@ -136,6 +127,7 @@ export default function TripProvider({ children }) {
   /** Load (or create+register) my card, then balance + history. */
   const refreshTrips = useCallback(async () => {
     setCardBusy(true);
+    setLoadError(null);
     try {
       const myCard = await getOrCreateMyCard();
       setCard(myCard);
@@ -162,6 +154,10 @@ export default function TripProvider({ children }) {
       } catch {
         setTransactions([]);
       }
+    } catch (err) {
+      // Card load/create failed entirely (offline, backend down, RLS…) —
+      // remember why so screens can show a retry instead of zero balance.
+      setLoadError(err?.message || "Could not load your card. Check your connection and try again.");
     } finally {
       setCardBusy(false);
     }
@@ -234,7 +230,9 @@ export default function TripProvider({ children }) {
         throw new Error("Payment was not approved");
       }
       setTransactions((prev) => [orderToTx(paid), ...prev]);
-      // Server just mutated balance + products — re-read them.
+      // Server just mutated balance + products — re-read them, and drop
+      // the fare catalogue so the next Load Trips visit shows fresh prices.
+      clearFareCache();
       await refreshTrips();
       return paid;
     },
@@ -251,6 +249,7 @@ export default function TripProvider({ children }) {
       addRides,
       card,
       cardBusy,
+      loadError,
       refreshTrips,
       registerCard,
       purchase: addRides,
@@ -264,6 +263,7 @@ export default function TripProvider({ children }) {
       addRides,
       card,
       cardBusy,
+      loadError,
       refreshTrips,
       registerCard,
     ],

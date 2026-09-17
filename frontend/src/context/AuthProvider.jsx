@@ -60,11 +60,22 @@ export default function AuthProvider({ children }) {
       }
     })();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        setUser(null);
-      }
-    });
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+        // Session-expiry path: Supabase emits SIGNED_OUT itself when the
+        // refresh token is rejected, but a failed silent refresh surfaces
+        // here first. Either way, a dead session drops the user to /login
+        // on the next protected navigation (ProtectedRoute sees user=null).
+        if (event === "TOKEN_REFRESHED") {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session) setUser(null);
+          });
+        }
+      },
+    );
 
     return () => {
       cancelled = true;
