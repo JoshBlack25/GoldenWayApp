@@ -8,9 +8,9 @@ import {
   fetchTicketQueue,
   fetchAgentsOnline,
   fetchRecentInspections,
-  fetchStaffTeam,
 } from "../../../api/operations";
 import { fetchStaffRequests } from "../../../api/staff";
+import { fetchLiveAlerts } from "../../../api/goldenway";
 import ClerkHomeScreen from "../clerk/ClerkHomeScreen";
 
 /**
@@ -324,16 +324,19 @@ function InspectorHero() {
 function AdminHero() {
   const [state, setState] = useState({
     pending: null,
-    team: null,
     tickets: null,
+    alerts: null,
   });
   useEffect(() => {
     let live = true;
+    // fetchLiveAlerts() reads the same service_alerts rows the DRIVER
+    // lane's DELAYED/BREAKDOWN reports create (see AlertsScreen.jsx for
+    // the full admin-side view + withdraw action).
     Promise.allSettled([
       fetchStaffRequests(),
-      fetchStaffTeam(),
       fetchTicketQueue(),
-    ]).then(([r, t, q]) => {
+      fetchLiveAlerts(),
+    ]).then(([r, q, al]) => {
       if (!live) return;
       const pending =
         r.status === "fulfilled"
@@ -345,8 +348,8 @@ function AdminHero() {
           : [];
       setState({
         pending: r.status === "fulfilled" ? pending : [],
-        team: t.status === "fulfilled" ? t.value : [],
         tickets: q.status === "fulfilled" ? open : [],
+        alerts: al.status === "fulfilled" ? al.value : [],
       });
     });
     return () => {
@@ -376,9 +379,9 @@ function AdminHero() {
             to: "/staff/inbox",
           },
           {
-            label: "STAFF ACCOUNTS",
-            value: state.team?.length ?? "…",
-            to: "/staff/team",
+            label: "ACTIVE ALERTS",
+            value: state.alerts?.length ?? "…",
+            to: "/staff/alerts",
           },
         ]}
       />

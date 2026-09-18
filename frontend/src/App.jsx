@@ -33,6 +33,7 @@ import NotificationsScreen from "./screens/commuter/Notifications/NotificationsS
 import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
 import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
 import TeamScreen from "./screens/staff/admin/TeamScreen";
+import AlertsScreen from "./screens/staff/admin/AlertsScreen";
 import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
 import InspectionHistoryScreen from "./screens/staff/inspector/InspectionHistoryScreen";
 import RunsScreen from "./screens/staff/driver/RunsScreen";
@@ -77,7 +78,7 @@ const staffScreens = {
   onboarding: { element: <OnboardingScreen />, roles: ["ADMIN"] },
   team: { element: <TeamScreen />, roles: ["ADMIN"] },
   catalog: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
-  alerts: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  alerts: { element: <AlertsScreen />, roles: ["ADMIN"] }, // view + withdraw driver-triggered alerts; full "publish new alert" form still Matthew's lane
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   inspections: { element: <InspectionHistoryScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },

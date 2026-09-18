@@ -518,6 +518,53 @@ export const setStaffActive = (staffId, active) =>
   rpc("set_staff_active", { p_staff_id: staffId, p_active: active });
 
 // =====================================================================
+// Admin — live fleet + alerts (Driver ↔ Admin end-to-end interaction)
+// =====================================================================
+// Right now every row in service_alerts comes from a DRIVER's DELAYED/
+// BREAKDOWN report (the 0006 trigger on vehicle_runs — see RunsScreen.jsx
+// and 0006_operations.sql). This is the admin-side half of that loop:
+// see what's currently live on the road, and correct/withdraw an alert
+// if a driver's situation has changed since they reported it. This does
+// NOT create new alerts from scratch (routes/severity/scheduling) — that
+// stays a separate ADMIN "publish alert" feature for whoever builds the
+// full catalog/alerts lane; this is scoped to what's already there.
+
+/** Every driver run currently in progress, fleet-wide (ADMIN can read any driver's row — RLS). */
+export async function fetchAllOpenRuns() {
+  const { data, error } = await supabase
+    .from("vehicle_runs")
+    .select("id, route_code, bus_id, direction, status, delay_minutes, started_at, staff:driver_id(first_name, surname)")
+    .is("ended_at", null)
+    .order("started_at", { ascending: false });
+  if (error) throw toApiError(error);
+  return (data || []).map((r) => ({
+    id: r.id,
+    routeCode: r.route_code,
+    busId: r.bus_id,
+    direction: r.direction,
+    status: r.status,
+    delayMinutes: r.delay_minutes,
+    startedAt: r.started_at,
+    driverName: r.staff ? `${r.staff.first_name} ${r.staff.surname}` : "—",
+  }));
+}
+
+/**
+ * Ends an alert early by setting effective_to = now(). A plain table
+ * update, not an RPC — ADMIN already has write access to service_alerts
+ * via the existing "service_alerts_write" RLS policy (0001_schema.sql),
+ * so no new database function was needed for this.
+ */
+export async function withdrawAlert(alertId) {
+  const { error } = await supabase
+    .from("service_alerts")
+    .update({ effective_to: new Date().toISOString() })
+    .eq("id", alertId);
+  if (error) throw toApiError(error);
+  return true;
+}
+
+// =====================================================================
 // Staff — self-service account (0014): Delete(=deactivate). Update
 // (name/surname/phone/password) is updateMyStaffDetails in api/staff.js.
 // =====================================================================
