@@ -34,6 +34,7 @@ import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
 import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
 import TeamScreen from "./screens/staff/admin/TeamScreen";
 import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
+import InspectionHistoryScreen from "./screens/staff/inspector/InspectionHistoryScreen";
 import RunsScreen from "./screens/staff/driver/RunsScreen";
 import InboxScreen from "./screens/staff/agent/InboxScreen";
 import ChatScreen from "./screens/staff/agent/ChatScreen";
@@ -78,6 +79,7 @@ const staffScreens = {
   catalog: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   alerts: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
+  inspections: { element: <InspectionHistoryScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
   timetable: { element: <TimetableScreen hideCta />, roles: ["DRIVER", "ADMIN"] },
   inbox: { element: <InboxScreen />, roles: ["AGENT", "ADMIN"] },

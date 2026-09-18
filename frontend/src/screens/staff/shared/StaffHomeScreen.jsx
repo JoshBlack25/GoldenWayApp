@@ -300,7 +300,7 @@ function InspectorHero() {
           {
             label: "RECENT LOOKUPS",
             value: inspections?.length ?? "…",
-            to: "/staff/verify",
+            to: "/staff/inspections",
           },
           {
             label: "FLAGGED (ALL)",
@@ -308,7 +308,7 @@ function InspectorHero() {
               inspections?.filter(
                 (r) => (r.outcome || "").toUpperCase() !== "VALID",
               ).length ?? "…",
-            to: "/staff/verify",
+            to: "/staff/inspections",
           },
         ]}
       />

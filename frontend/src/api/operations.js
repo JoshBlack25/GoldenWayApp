@@ -8,6 +8,42 @@ import { ApiError } from "./client";
  * "field: message" convention the screens parse.
  */
 
+// ============================================================================
+// READ ME FIRST — this file is the bridge between the screens and the DB
+// ============================================================================
+// This one file (frontend/src/api/operations.js) is where every staff
+// screen goes to read or write data. No screen ever imports "supabase"
+// directly and no screen ever writes raw database queries — they all call
+// a plain-named function from here instead (e.g. lookupCardForInspection,
+// startRun, claimTicket). That keeps every database call in ONE place,
+// which is why this file is so long.
+//
+// There are two different ways a function in this file can reach the
+// database, and it matters which one it uses:
+//
+//   1. rpc(name, args) — below — calls a named function that lives INSIDE
+//      the Postgres database itself ("RPC" = remote procedure call). These
+//      names always match a `create function public.<name>(...)` block in
+//      one of the .sql files under supabase/migrations/. This is used for
+//      anything that changes data (inserting, updating) or that needs
+//      business-rule checks (e.g. "is this person actually an inspector?")
+//      done safely on the server, not trusted to the browser.
+//      Example: rpc("log_inspection_outcome", {...}) runs the SQL function
+//      named log_inspection_outcome, wherever it's defined.
+//
+//   2. supabase.from("table_name").select(...) — a plain read straight off
+//      a database table, no custom function involved. Used for simple
+//      "just show me what's in this table" screens. What a signed-in user
+//      is allowed to see this way is controlled entirely by the database's
+//      Row Level Security ("RLS") rules attached to that table — also
+//      defined in the .sql migration files, as `create policy ...`
+//      statements.
+//
+// So: to find out EXACTLY what happens when a button on screen is
+// pressed, look at which function it calls here, then search the
+// supabase/migrations/*.sql files for that same name.
+// ============================================================================
+
 function toApiError(error, fallbackStatus = 400) {
   const message = error?.message || "Request failed";
   const code = error?.code;
@@ -20,6 +56,13 @@ function toApiError(error, fallbackStatus = 400) {
   return new ApiError(fallbackStatus, { error: message });
 }
 
+// The actual bridge function. Every rpc("some_name", {...}) call below
+// sends "some_name" + its arguments to Supabase, which finds and runs the
+// Postgres function of that exact name (search supabase/migrations/*.sql
+// for `function public.some_name`). Whatever that SQL function `return`s
+// comes back here as `data`. If the SQL function fails (e.g. it does
+// `raise exception 'FORBIDDEN'`), that shows up here as `error` instead,
+// and gets converted into a friendlier error message by toApiError above.
 function rpc(fn, args) {
   return supabase.rpc(fn, args).then(({ data, error }) => {
     if (error) throw toApiError(error);
@@ -335,10 +378,41 @@ export const reportRunStatus = (runId, status, delayMinutes = 0, note = null) =>
 // =====================================================================
 // Inspector (0006): handheld verifier (BR-08)
 // =====================================================================
+// This whole section is what the two screens in
+// frontend/src/screens/staff/inspector/ (VerifyScreen.jsx and
+// InspectionHistoryScreen.jsx) call. Two of the four functions below use
+// rpc() (they run a named function inside Postgres); the other two just
+// read straight from the "inspection_events" table.
+//
+// The underlying database objects — the "inspection_events" table itself,
+// the two RPC functions, and the security rules controlling who can
+// insert/read rows — were first created in
+// supabase/migrations/0006_operations.sql, and a security bug in the
+// permission rules (any staff role could insert a fake record, not just
+// inspectors) was fixed later in
+// supabase/migrations/0016_inspector_hardening.sql. If you want to see
+// exactly what runs on the server, open those two files and search for
+// "lookup_card_for_inspection" / "log_inspection_outcome" /
+// "inspection_events_insert".
 
+// Called by VerifyScreen.jsx when the inspector presses "Look up".
+// Runs the lookup_card_for_inspection(p_card_number) function in the
+// database, which reads the card's details (status, journeys left,
+// concession info, loaded products, and its 3 most recent past
+// inspections) and returns them as one bundle. The database function
+// itself checks that the caller is actually an INSPECTOR (or ADMIN)
+// before returning anything — that check happens on the server, not here,
+// so it can't be bypassed from the browser.
 export const lookupCardForInspection = (cardNumber) =>
   rpc("lookup_card_for_inspection", { p_card_number: cardNumber.trim().toUpperCase() });
 
+// Called by VerifyScreen.jsx when the inspector taps one of the outcome
+// buttons (Valid / No product / Expired / Unregistered / Refused).
+// Runs the log_inspection_outcome(p_card_number, p_outcome, p_note)
+// function in the database, which permanently inserts one new row into
+// the "inspection_events" table — this is the actual audit record. Same
+// as above, the server checks the caller is an INSPECTOR/ADMIN and that
+// the card really exists before it allows the insert.
 export const logInspectionOutcome = (cardNumber, outcome, note = null) =>
   rpc("log_inspection_outcome", {
     p_card_number: cardNumber.trim().toUpperCase(),
@@ -346,10 +420,40 @@ export const logInspectionOutcome = (cardNumber, outcome, note = null) =>
     p_note: note,
   });
 
+/**
+ * Called by InspectionHistoryScreen.jsx (the "History" tab). This is a
+ * plain read, not an RPC — it just asks the "inspection_events" table for
+ * its most recent rows, across EVERY inspector, not just the person
+ * currently logged in. It's allowed to see everyone's rows because of the
+ * "inspection_events_read" database policy (any INSPECTOR or ADMIN can
+ * read all rows) — see supabase/migrations/0006_operations.sql.
+ */
 export async function fetchRecentInspections(limit = 15) {
   const { data, error } = await supabase
     .from("inspection_events")
+    .select("id, inspector_id, card_number, outcome, note, at")
+    .order("at", { ascending: false })
+    .limit(limit);
+  if (error) throw toApiError(error);
+  return data || [];
+}
+
+/**
+ * Called by VerifyScreen.jsx for the "YOUR RECENT LOOKUPS" shortcut list
+ * near the bottom of that screen. Also a plain read of the
+ * "inspection_events" table, but this time filtered down to only the
+ * rows where inspector_id matches whoever is currently logged in
+ * (supabase.auth.getUser() is how we find out who that is) — so two
+ * different inspectors looking at this same list on their own phones
+ * would each see only their own past lookups.
+ */
+export async function fetchMyRecentInspections(limit = 8) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return [];
+  const { data, error } = await supabase
+    .from("inspection_events")
     .select("id, card_number, outcome, note, at")
+    .eq("inspector_id", auth.user.id)
     .order("at", { ascending: false })
     .limit(limit);
   if (error) throw toApiError(error);
