@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import MapCanvas from "../../../components/MapCanvas";
 import TransactionRow from "../../../components/TransactionRow";
+import TripLoadError from "../../../components/TripLoadError";
 import { useTrips } from "../../../context/trip";
 import { fetchLiveAlerts } from "../../../api/goldenway";
 
@@ -34,6 +35,9 @@ export default function HomeScreen() {
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-6">
+      {/* Card/balance load failure — never show a silent zero balance */}
+      <TripLoadError />
+
       {/* Live GABS service alerts */}
       {alerts.length > 0 && (
         <button

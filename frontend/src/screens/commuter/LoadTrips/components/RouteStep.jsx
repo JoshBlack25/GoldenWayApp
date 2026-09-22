@@ -11,7 +11,6 @@ import {
  * (BR-03) hide Go Easy plans and show the GABS exclusion notice verbatim.
  */
 export default function RouteStep({
-  routes,
   origins,
   destinations,
   from,

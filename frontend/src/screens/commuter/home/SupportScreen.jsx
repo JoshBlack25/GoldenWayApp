@@ -4,24 +4,21 @@ import { useAuth } from "../../../context/auth";
 import {
   fetchMyTickets,
   createTicket,
-  fetchTicketMessages,
-  sendCommuterMessage,
   fetchAgentsOnline,
 } from "../../../api/operations";
-import { supabase } from "../../../lib/supabaseClient";
+import useTicketChat from "../../../hooks/useTicketChat";
 
 /**
  * Support (D4, mocks M3 + M9) — real tickets over support_tickets /
  * ticket_messages. The commuter picks a ticket (or opens one), the
  * thread loads via RLS (they only ever see their own), and agent replies
- * arrive live through the 0009 realtime channel. "Agents online" comes
+ * arrive live, message by message, via the 0011 realtime channel. "Agents online" comes
  * from the agents_online() RPC — no more fake green dot.
  */
 export default function SupportScreen() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [activeTicket, setActiveTicket] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [opening, setOpening] = useState(false);
@@ -29,6 +26,12 @@ export default function SupportScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const bottomRef = useRef(null);
+
+  // Chat engine: fetch + realtime message-by-message + optimistic send.
+  const { messages, send: sendChat } = useTicketChat({
+    ticketId: activeTicket,
+    sender: "COMMUTER",
+  });
 
   const loadTickets = useCallback(async () => {
     try {
@@ -55,44 +58,6 @@ export default function SupportScreen() {
     })();
   }, [user, loadTickets]);
 
-  // Load the thread whenever the active ticket changes.
-  useEffect(() => {
-    if (!activeTicket) return;
-    let cancelled = false;
-    fetchTicketMessages(activeTicket)
-      .then((msgs) => !cancelled && setMessages(msgs))
-      .catch(() => !cancelled && setMessages([]));
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTicket]);
-
-  // Realtime: agent replies land live (0009 enables realtime on ticket_messages).
-  useEffect(() => {
-    if (!activeTicket) return;
-    const channel = supabase
-      .channel(`ticket-${activeTicket}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "ticket_messages", filter: `ticket_id=eq.${activeTicket}` },
-        (payload) => {
-          const m = payload.new;
-          setMessages((prev) =>
-            prev.some((x) => x.id === m.id)
-              ? prev
-              : [...prev, {
-                  id: m.id,
-                  from: m.sender === "COMMUTER" ? "user" : "agent",
-                  text: m.body,
-                  time: new Date(m.sent_at).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }),
-                }],
-          );
-        },
-      )
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [activeTicket]);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -102,30 +67,8 @@ export default function SupportScreen() {
     const text = draft.trim();
     if (!text || !activeTicket) return;
     setDraft("");
-    try {
-      await sendCommuterMessage(activeTicket, text);
-      const row = await supabase
-        .from("ticket_messages")
-        .select("id, sender, body, sent_at")
-        .eq("ticket_id", activeTicket)
-        .order("sent_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (row.data) {
-        setMessages((prev) =>
-          prev.some((x) => x.id === row.data.id)
-            ? prev
-            : [...prev, {
-                id: row.data.id,
-                from: "user",
-                text: row.data.body,
-                time: new Date(row.data.sent_at).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }),
-              }],
-        );
-      }
-    } catch (err) {
-      setError(err?.message || "Could not send the message");
-    }
+    const ok = await sendChat(text);
+    if (!ok) setDraft(text); // restore draft on failure
   }
 
   async function handleOpenTicket(e) {
@@ -139,7 +82,6 @@ export default function SupportScreen() {
       const list = await loadTickets();
       setActiveTicket(id);
       setNewSubject("");
-      setMessages([]);
       void list;
     } catch (err) {
       setError(err?.message || "Could not open the ticket");

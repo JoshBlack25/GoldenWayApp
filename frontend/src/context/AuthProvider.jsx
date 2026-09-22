@@ -3,7 +3,6 @@ import { AuthContext } from "./auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchMyCommuterProfile,
-  loginCommuter,
   logoutCommuter,
   registerCommuter,
 } from "../api/goldenway";
@@ -46,6 +45,7 @@ export default function AuthProvider({ children }) {
             firstName: profileType.firstName,
             surname: profileType.surname,
             email: profileType.email,
+            phone: profileType.phone ?? null,
           });
           return;
         }
@@ -60,11 +60,22 @@ export default function AuthProvider({ children }) {
       }
     })();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        setUser(null);
-      }
-    });
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+        // Session-expiry path: Supabase emits SIGNED_OUT itself when the
+        // refresh token is rejected, but a failed silent refresh surfaces
+        // here first. Either way, a dead session drops the user to /login
+        // on the next protected navigation (ProtectedRoute sees user=null).
+        if (event === "TOKEN_REFRESHED") {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session) setUser(null);
+          });
+        }
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -80,7 +91,7 @@ export default function AuthProvider({ children }) {
         await supabase.auth.signOut();
         throw new ApiError(403, { error: "This staff account has been deactivated. Contact a GoldenWay admin." });
       }
-      const staffUser = { isStaff: true, ...result.staff };
+      const staffUser = { isStaff: true, ...result.staff, phone: result.staff.phone ?? null };
       setUser(staffUser);
       return staffUser;
     }
@@ -103,7 +114,7 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, initializing, login, register, logout }),
+    () => ({ user, initializing, login, register, logout, setUser }),
     [user, initializing, login, register, logout],
   );
 

@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import TicketCard from "../../../components/TicketCard";
 import TransactionRow from "../../../components/TransactionRow";
+import TripLoadError from "../../../components/TripLoadError";
 import { useTrips } from "../../../context/trip";
 
 export default function CardScreen() {
@@ -12,6 +13,7 @@ export default function CardScreen() {
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-6">
+      <TripLoadError />
       <TicketCard last4={last4} expiry={passExpiresOn
         ? new Date(passExpiresOn).toLocaleDateString("en-ZA", { month: "2-digit", year: "2-digit" })
         : "—"} />
