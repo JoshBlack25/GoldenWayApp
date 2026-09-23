@@ -93,19 +93,29 @@ export default function SupportScreen() {
   const active = tickets.find((t) => t.id === activeTicket);
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col flex-1 min-h-full">
       <div className="px-5 pb-3 flex items-start justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink-900">Support</h1>
+          <h1 className="font-display text-2xl font-bold text-ink-900">
+            Support
+          </h1>
           <p className="flex items-center gap-1.5 text-[12px] text-slate-500 mt-1">
-            <span className={`h-1.5 w-1.5 rounded-full ${agents.online ? "bg-emerald-500" : "bg-slate-400"}`} />
-            {agents.online ? `${agents.count} agent${agents.count === 1 ? "" : "s"} online` : "Agents offline — we'll reply soon"}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${agents.online ? "bg-emerald-500" : "bg-slate-400"}`}
+            />
+            {agents.online
+              ? `${agents.count} agent${agents.count === 1 ? "" : "s"} online`
+              : "Agents offline — we'll reply soon"}
           </p>
         </div>
         <button
           type="button"
           className="h-11 w-11 rounded-xl flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}
+          style={{
+            background: "linear-gradient(135deg, #ffd873, #f0b429)",
+            boxShadow: "var(--shadow-glow-gold)",
+            color: "var(--color-ink-900)",
+          }}
           aria-label="Call support"
         >
           <PhoneIcon />
@@ -125,18 +135,25 @@ export default function SupportScreen() {
                 : "bg-white border-ink-900/10 text-slate-500 hover:border-gold-500/40"
             }`}
           >
-            #{t.id} · {t.status === "RESOLVED" ? "✓ " : ""}{t.subject.slice(0, 22)}{t.subject.length > 22 ? "…" : ""}
+            #{t.id} · {t.status === "RESOLVED" ? "✓ " : ""}
+            {t.subject.slice(0, 22)}
+            {t.subject.length > 22 ? "…" : ""}
           </button>
         ))}
         {!loading && tickets.length === 0 && (
-          <p className="text-[12px] text-slate-500">No tickets yet — open one below.</p>
+          <p className="text-[12px] text-slate-500">
+            No tickets yet — open one below.
+          </p>
         )}
       </div>
 
       {/* Thread */}
       <div className="flex-1 flex flex-col gap-3 px-5 pb-4">
         {error && (
-          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] font-medium text-red-600">
+          <p
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] font-medium text-red-600"
+          >
             {error}
           </p>
         )}
@@ -154,16 +171,24 @@ export default function SupportScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
             className={`flex flex-col max-w-[80%] ${
-              m.from === "user" ? "self-end items-end" : "self-start items-start"
+              m.from === "user"
+                ? "self-end items-end"
+                : "self-start items-start"
             }`}
           >
             <div
               className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
-                m.from === "user" ? "text-ink-900 rounded-br-md" : "bg-cream-200 text-ink-900 rounded-bl-md"
+                m.from === "user"
+                  ? "text-ink-900 rounded-br-md"
+                  : "bg-cream-200 text-ink-900 rounded-bl-md"
               }`}
               style={
                 m.from === "user"
-                  ? { background: "linear-gradient(135deg, #ffd873 0%, #ffc52e 55%, #f0b429 100%)", boxShadow: "var(--shadow-glow-gold)" }
+                  ? {
+                      background:
+                        "linear-gradient(135deg, #ffd873 0%, #ffc52e 55%, #f0b429 100%)",
+                      boxShadow: "var(--shadow-glow-gold)",
+                    }
                   : undefined
               }
             >
@@ -192,14 +217,21 @@ export default function SupportScreen() {
             type="submit"
             whileTap={{ scale: 0.92 }}
             className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}
+            style={{
+              background: "linear-gradient(135deg, #ffd873, #f0b429)",
+              boxShadow: "var(--shadow-glow-gold)",
+              color: "var(--color-ink-900)",
+            }}
             aria-label="Send message"
           >
             <SendIcon />
           </motion.button>
         </form>
       ) : (
-        <form onSubmit={handleOpenTicket} className="sticky bottom-0 mt-auto glass px-5 py-3 border-t border-ink-900/5">
+        <form
+          onSubmit={handleOpenTicket}
+          className="sticky bottom-0 mt-auto glass px-5 py-3 border-t border-ink-900/5"
+        >
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -213,7 +245,11 @@ export default function SupportScreen() {
               whileTap={{ scale: 0.92 }}
               disabled={opening || !newSubject.trim()}
               className="h-11 w-11 rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}
+              style={{
+                background: "linear-gradient(135deg, #ffd873, #f0b429)",
+                boxShadow: "var(--shadow-glow-gold)",
+                color: "var(--color-ink-900)",
+              }}
               aria-label="Open ticket"
             >
               <PlusIcon />
@@ -227,7 +263,14 @@ export default function SupportScreen() {
 
 function PhoneIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
       <path
         d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"
         strokeLinecap="round"
@@ -239,16 +282,34 @@ function PhoneIcon() {
 
 function SendIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
       <path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M22 2l-7 20-4-9-9-4 20-7z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );

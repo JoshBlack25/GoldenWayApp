@@ -12,7 +12,6 @@ import {
   fetchRoutes,
   fetchProducts,
   fetchQuote,
-  INITIAL_CARDS,
   MAX_SAVED_CARDS,
   BR03_MESSAGE,
 } from "./data/loadTripsData";
@@ -28,7 +27,7 @@ import {
  */
 export default function LoadtripsScreen() {
   const navigate = useNavigate();
-  const { purchase } = useTrips();
+  const { purchase, paymentMethods, savePaymentMethod } = useTrips();
 
   const [phase, setPhase] = useState("route"); // route | payment | review | confirmation | receipt
   const [routes, setRoutes] = useState([]);
@@ -44,14 +43,35 @@ export default function LoadtripsScreen() {
   const [quote, setQuote] = useState(null);
   const [, setQuoteBusy] = useState(false);
 
-  const [cards, setCards] = useState(INITIAL_CARDS);
-  const [selectedCardId, setSelectedCardId] = useState(INITIAL_CARDS[0].id);
+  const [selectedCardId, setSelectedCardId] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const [cardError, setCardError] = useState("");
   const [receipt, setReceipt] = useState(null);
 
-  const selectedCard = cards.find((c) => c.id === selectedCardId) || cards[0];
+  // Mirror the DB wallet (0016) into the step-component card shape.
+  const cards = useMemo(
+    () =>
+      paymentMethods.map((m) => ({
+        id: m.id,
+        brand: m.brand === "VISA" ? "Visa" : m.brand === "MASTERCARD" ? "Mastercard" : "Card",
+        last4: m.last4,
+        expiry: `${String(m.expMonth).padStart(2, "0")}/${String(m.expYear).slice(-2)}`,
+        isDefault: m.isDefault,
+      })),
+    [paymentMethods],
+  );
+
+  useEffect(() => {
+    setSelectedCardId((prev) => {
+      if (cards.some((c) => c.id === prev)) return prev;
+      const def = cards.find((c) => c.isDefault) || cards[0];
+      return def ? def.id : "";
+    });
+  }, [cards]);
+
+  const selectedCard = cards.find((c) => c.id === selectedCardId) || null;
 
   // 1. Live route catalogue on mount.
   useEffect(() => {
@@ -143,11 +163,17 @@ export default function LoadtripsScreen() {
 
   const totalCents = quote?.priceCents ?? plan?.priceCents ?? 0;
 
-  function handleAddCard(newCard) {
+  async function handleAddCard(newCard) {
     if (cards.length >= MAX_SAVED_CARDS) return;
-    setCards((prev) => [...prev, newCard]);
-    setSelectedCardId(newCard.id);
-    setDrawerOpen(false);
+    try {
+      const saved = await savePaymentMethod(newCard);
+      setSelectedCardId(saved.id);
+      setDrawerOpen(false);
+    } catch (err) {
+      // Surface save failures right in the drawer (e.g. migration 0016
+      // not applied, RLS denial) instead of failing silently.
+      setCardError(err?.message || "Could not save the card. Please try again.");
+    }
   }
 
   // 4. Real purchase: order → pay → product loaded on the card.
@@ -160,6 +186,7 @@ export default function LoadtripsScreen() {
         productCode: plan.id,
         routeCode: plan.family === "GO_EASY" ? route.code : route.code,
         amountCents: totalCents,
+        paymentMethodId: selectedCardId || null,
       });
       setReceipt({
         reference: order.receiptReference,
@@ -191,7 +218,7 @@ export default function LoadtripsScreen() {
     } finally {
       setPaying(false);
     }
-  }, [route, plan, paying, purchase, totalCents, quote, selectedCard]);
+  }, [route, plan, paying, purchase, totalCents, quote, selectedCard, selectedCardId]);
 
   function handleBackToHome() {
     setPhase("route");
@@ -292,8 +319,12 @@ export default function LoadtripsScreen() {
 
       <AddCardDrawer
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setCardError("");
+        }}
         onSave={handleAddCard}
+        error={cardError}
       />
     </div>
   );

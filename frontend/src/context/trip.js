@@ -6,6 +6,9 @@ import { createContext, useContext } from "react";
  *
  * Also exposes loadError (initial card/balance fetch failed) and
  * refreshTrips() as the retry — screens render a retry card when set.
+ *
+ * Payment wallet (0016): paymentMethods + save/remove/makeDefault manage
+ * the user's per-account saved payment methods (brand + last4 only).
  */
 export const TripContext = createContext(null);
 

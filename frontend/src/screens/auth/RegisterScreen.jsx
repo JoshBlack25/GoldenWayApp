@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/auth";
 import { ApiError } from "../../api/client";
+import { supabase } from "../../lib/supabaseClient";
 import {
   formatIdNumber,
   luhnValid,
@@ -11,28 +12,34 @@ import {
 } from "../../utils/saId";
 
 /**
- * RegisterScreen — real POST /auth/register.
- * The backend (CommuterFactory) validates: names, SA-format phone
- * ((+27|0)xxxxxxxxx), a 13-digit SA ID with a valid Luhn checksum, age ≥ 5,
- * and unique email/ID (409). Field-level errors come back as 400
- * { field: "message" } and are shown next to each input.
+ * RegisterScreen — signup via Supabase Auth (0017: Confirm Email on).
+ * signUp() carries all form data as user_metadata; the commuters row is
+ * created server-side by the on_auth_user_commuter_signup trigger once
+ * the account exists — not by a client RPC call, since no session
+ * exists until the user confirms their email.
  *
  * DOB auto-fill: SA IDs encode YYMMDD as the first 6 digits. We derive and
  * populate Date of Birth from that as the user types the ID, but stop
  * overwriting it the moment they edit DOB manually.
  *
- * Gender removed (2026-09) — dropped from public.commuters; see
- * supabase/migrations/0014_remove_gender.sql.
+ * Existing Gold Card claim: a commuter who already bought a card at a
+ * clerk kiosk can check "I already have a Gold Card", enter its number,
+ * and confirm it (lookup_card_at_signup, public/no-session RPC) before
+ * submitting. The confirmed card number travels in signup metadata and
+ * is linked to their account on first confirmed login (AuthProvider).
  */
-
-// ID formatting/checksum/DOB derivation live in utils/saId.js (shared,
-// unit-tested against the backend contract).
 
 function splitName(fullName) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { firstName: "", surname: "" };
   if (parts.length === 1) return { firstName: parts[0], surname: "" };
   return { firstName: parts[0], surname: parts.slice(1).join(" ") };
+}
+
+function formatCardNumber(raw) {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits ? `GW-${digits}` : "";
+  return `GW-${digits.slice(0, 4)}-${digits.slice(4)}`;
 }
 
 export default function RegisterScreen() {
@@ -54,6 +61,13 @@ export default function RegisterScreen() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
+  // --- Existing Gold Card claim (0017) ---
+  const [hasExistingCard, setHasExistingCard] = useState(false);
+  const [cardNumber, setCardNumber] = useState(""); // GW-XXXX-XXXX
+  const [cardLookup, setCardLookup] = useState(null); // lookup_card_at_signup result once confirmed
+  const [cardLookupBusy, setCardLookupBusy] = useState(false);
+  const [cardLookupError, setCardLookupError] = useState("");
+
   const idDigits = idNumber.replace(/\D/g, "");
   const idError = useMemo(() => {
     if (!idDigits) return "";
@@ -62,6 +76,36 @@ export default function RegisterScreen() {
       return "This ID number fails the checksum — please check it";
     return "";
   }, [idDigits]);
+
+  const cardNumberValid = /^GW-\d{4}-\d{4}$/.test(cardNumber);
+
+  // Any edit to the card number after a successful lookup invalidates
+  // the confirmation, so a stale "yes this is mine" can't slip through.
+  useEffect(() => {
+    setCardLookup(null);
+    setCardLookupError("");
+  }, [cardNumber]);
+
+  async function handleCheckCard() {
+    if (!cardNumberValid || idDigits.length !== 13 || cardLookupBusy) return;
+    setCardLookupBusy(true);
+    setCardLookupError("");
+    setCardLookup(null);
+    try {
+      const { data, error: rpcError } = await supabase.rpc(
+        "lookup_card_at_signup",
+        { p_card_number: cardNumber, p_id_number: idDigits },
+      );
+      if (rpcError) throw rpcError;
+      setCardLookup(data);
+    } catch {
+      setCardLookupError(
+        "No unregistered card matches this number and ID. Check the digits and try again.",
+      );
+    } finally {
+      setCardLookupBusy(false);
+    }
+  }
 
   // Auto-fill DOB from the ID as it's typed, unless the user has manually edited DOB.
   useEffect(() => {
@@ -110,6 +154,15 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (hasExistingCard && !cardLookup) {
+      setError(
+        cardNumberValid
+          ? "Check your card details before continuing."
+          : 'Enter your Gold Card number, then tap "Check card" to confirm it\'s yours.',
+      );
+      return;
+    }
+
     setBusy(true);
     try {
       await register({
@@ -121,8 +174,12 @@ export default function RegisterScreen() {
         dateOfBirth,
         idNumber: idDigits,
         concessionType,
+        existingCardNumber: hasExistingCard ? cardNumber : undefined,
       });
-      navigate("/account-created", { replace: true });
+      navigate("/check-email", {
+        replace: true,
+        state: { email: email.trim() },
+      });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
@@ -236,6 +293,88 @@ export default function RegisterScreen() {
             icon={<IdIcon />}
             error={fieldErrors.idNumber || idError}
           />
+
+          {/* --- Existing Gold Card claim --- */}
+          <div className="rounded-xl border border-ink-900/10 bg-white/60 px-4 py-3.5">
+            <label className="flex items-start gap-2.5 select-none">
+              <input
+                type="checkbox"
+                checked={hasExistingCard}
+                onChange={(e) => {
+                  setHasExistingCard(e.target.checked);
+                  if (!e.target.checked) {
+                    setCardNumber("");
+                    setCardLookup(null);
+                    setCardLookupError("");
+                  }
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-ink-900/20 accent-gold-500 shrink-0"
+              />
+              <span className="text-[13px] font-medium text-ink-700 leading-snug">
+                I already have a Gold Card
+                <span className="block text-[11px] font-normal text-slate-500 mt-0.5">
+                  Bought one at a kiosk or from a clerk? Link it to your new
+                  account.
+                </span>
+              </span>
+            </label>
+
+            {hasExistingCard && (
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <div className="field-shell flex-1">
+                    <CardChipIcon />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="GW-1234-5678"
+                      value={cardNumber}
+                      onChange={(e) =>
+                        setCardNumber(formatCardNumber(e.target.value))
+                      }
+                      className="w-full py-3 text-[14px] text-ink-900 placeholder:text-slate-400 bg-transparent outline-none tracking-wide"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCheckCard}
+                    disabled={
+                      !cardNumberValid ||
+                      idDigits.length !== 13 ||
+                      cardLookupBusy
+                    }
+                    className="shrink-0 rounded-xl border border-gold-500/40 bg-gold-50 px-4 text-[13px] font-semibold text-gold-700 disabled:opacity-40 transition-colors"
+                  >
+                    {cardLookupBusy ? "Checking…" : "Check card"}
+                  </button>
+                </div>
+
+                {idDigits.length !== 13 && !idError && (
+                  <p className="text-[11px] text-slate-500">
+                    Enter your SA ID above first — it's needed to verify the
+                    card.
+                  </p>
+                )}
+
+                {cardLookupError && (
+                  <p className="text-[11px] text-red-600">{cardLookupError}</p>
+                )}
+
+                {cardLookup && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                    <p className="text-[12px] font-semibold text-emerald-700">
+                      ✓ Card {cardLookup.cardNumber} found
+                    </p>
+                    <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                      {cardLookup.journeysRemaining ?? 0} journey
+                      {cardLookup.journeysRemaining === 1 ? "" : "s"} remaining
+                      — this will be linked to your new account.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <SelectField
             label="Concession"
@@ -479,6 +618,21 @@ function IdIcon() {
         d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14.5 9.5H18M14.5 13H18"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function CardChipIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-slate-400 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <rect x="3" y="6" width="18" height="12" rx="2.2" />
+      <path d="M3 10h18" strokeLinecap="round" />
     </svg>
   );
 }
