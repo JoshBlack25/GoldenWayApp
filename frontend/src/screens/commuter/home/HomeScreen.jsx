@@ -38,7 +38,7 @@ export default function HomeScreen() {
       {alerts.length > 0 && (
         <button
           type="button"
-          onClick={() => navigate("/support")}
+          onClick={() => navigate("/alerts")}
           className="flex items-start gap-2.5 rounded-xl border border-brand-500/25 bg-brand-50 px-4 py-3 text-left"
         >
           <AlertIcon />
@@ -47,7 +47,7 @@ export default function HomeScreen() {
               SERVICE ALERT
             </span>
             <span className="block text-[12px] font-medium text-ink-900 truncate">
-              {alerts[0].message || alerts[0].title || "Service notice for your routes"}
+              {alerts[0].title || alerts[0].body || "Service notice for your routes"}
             </span>
           </span>
           {alerts.length > 1 && (

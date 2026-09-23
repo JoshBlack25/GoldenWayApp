@@ -28,11 +28,14 @@ import TripScreen from "./screens/commuter/History/TripScreen";
 import ProfileScreen from "./screens/commuter/Profile/ProfileScreen";
 import UpdateProfileScreen from "./screens/commuter/Profile/UpdateProfileScreen";
 import NotificationsScreen from "./screens/commuter/Notifications/NotificationsScreen";
+import CommuterAlertsScreen from "./screens/commuter/Alerts/AlertsScreen";
 
 // Staff console — shared + per-role (one folder per team lane)
 import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
 import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
 import TeamScreen from "./screens/staff/admin/TeamScreen";
+import CatalogScreen from "./screens/staff/admin/CatalogScreen";
+import AlertsScreen from "./screens/staff/admin/AlertsScreen";
 import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
 import RunsScreen from "./screens/staff/driver/RunsScreen";
 import InboxScreen from "./screens/staff/agent/InboxScreen";
@@ -54,6 +57,7 @@ const commuterTree = (
     <Route path="/timetable" element={<TimetableScreen />} />
     <Route path="/route-42" element={<Route42Screen />} />
     <Route path="/support" element={<SupportScreen />} />
+    <Route path="/alerts" element={<CommuterAlertsScreen />} />
     <Route path="/load-trips" element={<LoadtripsScreen />} />
     <Route path="/card" element={<CardScreen />} />
     <Route path="/use-ticket" element={<UseTicketScreen />} />
@@ -74,8 +78,8 @@ const commuterTree = (
 const staffScreens = {
   onboarding: { element: <OnboardingScreen />, roles: ["ADMIN"] },
   team: { element: <TeamScreen />, roles: ["ADMIN"] },
-  catalog: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
-  alerts: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  catalog: { element: <CatalogScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  alerts: { element: <AlertsScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
   timetable: { element: <TimetableScreen hideCta />, roles: ["DRIVER", "ADMIN"] },
