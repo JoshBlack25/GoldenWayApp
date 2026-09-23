@@ -3,8 +3,10 @@ import StepperHeader from "./StepperHeader";
 import { formatCents } from "../data/loadTripsData";
 
 /**
- * Step 2 — payment method. Card entries are a demo wallet (no payment-card
- * backend yet); the amount shown is the live quote total in cents.
+ * Step 2 — payment method. Saved methods come from the user's DB wallet
+ * (migration 0016, brand + last4 only); the amount shown is the live
+ * quote total in cents. Payment itself runs through the simulated
+ * gateway (pay_topup_order) — no real money moves.
  */
 export default function PaymentStep({
   route,
@@ -67,9 +69,14 @@ export default function PaymentStep({
                     <div className="text-left">
                       <p className="font-semibold text-ink-900 text-[14px]">
                         {card.brand}
+                        {card.isDefault && (
+                          <span className="ml-2 text-[10px] font-semibold tracking-wide text-gold-600">
+                            DEFAULT
+                          </span>
+                        )}
                       </p>
                       <p className="text-[12px] text-slate-500">
-                        &bull;&bull;&bull;&bull; {card.last4}
+                        &bull;&bull;&bull;&bull; {card.last4} · expires {card.expiry}
                       </p>
                     </div>
                   </div>
@@ -94,6 +101,12 @@ export default function PaymentStep({
               >
                 <PlusIcon /> Add New Card
               </button>
+            )}
+            {!cards.length && (
+              <p className="text-[12px] text-slate-500 px-1">
+                No saved cards yet — add one to continue. Only the brand and
+                last 4 digits are stored.
+              </p>
             )}
           </div>
         </div>

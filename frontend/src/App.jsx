@@ -10,6 +10,7 @@ import ForgotPasswordScreen from "./screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/auth/ResetPasswordScreen";
 import StaffSignupScreen from "./screens/auth/StaffSignupScreen";
 import AccountCreatedScreen from "./screens/auth/AccountCreatedScreen";
+import CheckEmailScreen from "./screens/auth/CheckEmailScreen";
 import NotFoundScreen from "./screens/NotFoundScreen";
 import DashboardLayout from "./layout/DashboardLayout";
 import StaffLayout from "./layout/StaffLayout";
@@ -82,7 +83,10 @@ const staffScreens = {
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   inspections: { element: <InspectionHistoryScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
-  timetable: { element: <TimetableScreen hideCta />, roles: ["DRIVER", "ADMIN"] },
+  timetable: {
+    element: <TimetableScreen hideCta />,
+    roles: ["DRIVER", "ADMIN"],
+  },
   inbox: { element: <InboxScreen />, roles: ["AGENT", "ADMIN"] },
   chats: { element: <ChatScreen />, roles: ["AGENT", "ADMIN"] },
   kiosk: { element: <KioskScreen />, roles: ["CLERK", "ADMIN"] },
@@ -104,6 +108,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordScreen />} />
           <Route path="/staff-signup" element={<StaffSignupScreen />} />
           <Route path="/account-created" element={<AccountCreatedScreen />} />
+          <Route path="/check-email" element={<CheckEmailScreen />} />
 
           {/* Staff console: /staff + role tools nested under StaffLayout */}
           <Route
@@ -133,7 +138,14 @@ export default function App() {
               ),
             )}
             {/* Every staff member gets a profile page (Home-first nav skeleton) */}
-            <Route path="profile" element={<ProtectedRoute staff><StaffProfileScreen /></ProtectedRoute>} />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute staff>
+                  <StaffProfileScreen />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           {commuterTree}
@@ -147,12 +159,22 @@ export default function App() {
 
 function ComingSoon({ slug }) {
   return (
-    <div className="min-h-dvh text-white flex items-center justify-center" style={{ background: "linear-gradient(180deg, #0b1526, #12203d)" }}>
+    <div
+      className="min-h-dvh text-white flex items-center justify-center"
+      style={{ background: "linear-gradient(180deg, #0b1526, #12203d)" }}
+    >
       <div className="text-center">
         <p className="text-3xl mb-2">🚧</p>
         <h2 className="font-display text-lg font-bold">/staff/{slug}</h2>
-        <p className="text-[13px] text-white/50 mt-1">Reserved lane — this module is on the Sprint 2 board.</p>
-        <a href="/staff" className="inline-block mt-4 text-[12px] font-semibold text-gold-300 underline underline-offset-2">Back to console</a>
+        <p className="text-[13px] text-white/50 mt-1">
+          Reserved lane — this module is on the Sprint 2 board.
+        </p>
+        <a
+          href="/staff"
+          className="inline-block mt-4 text-[12px] font-semibold text-gold-300 underline underline-offset-2"
+        >
+          Back to console
+        </a>
       </div>
     </div>
   );
