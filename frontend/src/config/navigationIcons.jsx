@@ -77,6 +77,15 @@ export function InboxIcon({ className }) {
   );
 }
 
+export function ChatIcon({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 12a8 8 0 0 1-8 8H5l-1.5 3L4 17.5A8 8 0 1 1 21 12z" strokeLinejoin="round" />
+      <path d="M8.5 10.5h7M8.5 13.5h4.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function KioskIcon({ className }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">

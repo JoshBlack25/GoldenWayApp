@@ -1,5 +1,19 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/* shadcn-style tokens — only what the mapcn map components use
+   (popups, tooltips, controls). Mapped to GoldenWay colours. */
+@theme inline {
+  --color-background: var(--color-cream-50);
+  --color-foreground: var(--color-ink-900);
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--color-ink-900);
+  --color-muted-foreground: var(--color-slate-500);
+  --color-border: rgba(36, 31, 16, 0.12);
+  --color-ring: var(--color-gold-500);
+  --color-accent: var(--color-cream-100);
+}
 
 @theme {
   /* GABS brand identity — Golden Arrow red is the signature accent of the
@@ -87,13 +101,15 @@ body {
     linear-gradient(180deg, #fffdfb 0%, #fdf3e7 55%, #f8ecd9 100%);
 }
 
-/* Staff shell — SAME palette as the commuter app (wireframes: one brand,
-   one canvas). Staff is distinguished by chrome + content, not colour. */
+/* Staff shell — SAME palette and SAME 430px mobile frame as the commuter
+   app (wireframes: one brand, one canvas). Staff is distinguished by
+   chrome + content, not colour or width. */
 .staff-shell {
-  max-width: 640px;
+  max-width: 430px;
   margin-inline: auto;
   min-height: 100dvh;
   position: relative;
+  overflow: hidden;
   background:
     radial-gradient(120% 40% at 50% -8%, rgba(255, 197, 46, 0.14) 0%, rgba(255, 197, 46, 0) 60%),
     linear-gradient(180deg, #fffdfb 0%, #fdf3e7 55%, #f8ecd9 100%);
@@ -110,7 +126,8 @@ body {
 }
 
 @media (min-width: 431px) {
-  .app-shell {
+  .app-shell,
+  .staff-shell {
     box-shadow:
       0 0 0 1px var(--color-cream-200),
       0 60px 120px -40px rgba(36, 31, 16, 0.35);

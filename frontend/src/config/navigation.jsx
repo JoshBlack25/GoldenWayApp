@@ -22,6 +22,7 @@ import {
   ScanIcon,
   BusIcon,
   InboxIcon,
+  ChatIcon,
   KioskIcon,
   PeopleIcon,
   CatalogIcon,
@@ -38,6 +39,7 @@ export const Icons = {
   verify: ScanIcon,
   bus: BusIcon,
   inbox: InboxIcon,
+  chat: ChatIcon,
   kiosk: KioskIcon,
   people: PeopleIcon,
   catalog: CatalogIcon,
@@ -84,7 +86,7 @@ export const STAFF_TABS = {
   AGENT: [
     { to: "/staff", label: "Home", icon: "home", end: true },
     { to: "/staff/inbox", label: "Inbox", icon: "inbox" },
-    { to: "/staff/faq", label: "Snippets", icon: "ticket" }, // Raul S2-A4
+    { to: "/staff/chats", label: "Chats", icon: "chat" }, // live chat log (was "Snippets" placeholder)
     { to: "/staff/profile", label: "Profile", icon: "profile" },
   ],
 };
@@ -92,3 +94,4 @@ export const STAFF_TABS = {
 export function tabsForRole(role) {
   return STAFF_TABS[role] || STAFF_TABS.AGENT;
 }
+

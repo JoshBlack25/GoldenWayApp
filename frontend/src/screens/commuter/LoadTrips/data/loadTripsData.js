@@ -3,6 +3,7 @@ import {
   fetchQuoteFromDb,
   fetchRoutesFromDb,
 } from "../../../../api/goldenway";
+import { productLabel, isUnlimited } from "../../../../utils/productLabels";
 
 /**
  * Live GABS fare catalog for the Load Trips flow — backed directly by
@@ -31,25 +32,10 @@ export const ROUTE_LABELS = {
   "PAARL-BELL": "Paarl → Bellville",
 };
 
+export { productLabel, isUnlimited };
+
 export function routeLabel(code) {
   return ROUTE_LABELS[code] || code;
-}
-
-/** "GOEASY-5" → "Go Easy 5-Ride", "WEEKLY-KHA-CPT" → "Weekly Pass". */
-export function productLabel(code) {
-  if (!code) return "GoldenWay Pass";
-  const upper = code.toUpperCase();
-  if (upper.startsWith("WEEKLY")) return "Weekly Pass";
-  if (upper.startsWith("MONTHLY")) return "Monthly Pass";
-  if (upper.startsWith("FLEXI")) return "Flexi Zone";
-  const m = upper.match(/^GOEASY-(\d+)$/);
-  if (m) return `Go Easy ${m[1]}-Ride`;
-  return upper;
-}
-
-export function isUnlimited(code) {
-  const upper = (code || "").toUpperCase();
-  return upper.startsWith("WEEKLY") || upper.startsWith("MONTHLY");
 }
 
 /** FareProductResponse → the plan shape the step components render. */
@@ -80,6 +66,16 @@ export function mapRoute(rr) {
 
 let routesCache = null;
 const productsCache = new Map();
+
+/**
+ * Drop the fare catalogue caches. Called after a successful purchase so
+ * the next visit to Load Trips re-reads effective-dated prices instead of
+ * showing a stale fare for the rest of the session.
+ */
+export function clearFareCache() {
+  routesCache = null;
+  productsCache.clear();
+}
 
 export async function fetchRoutes() {
   if (routesCache) return routesCache;
@@ -119,10 +115,5 @@ export function detectCardBrand(cardNumber) {
 }
 
 export const MAX_SAVED_CARDS = 3;
-
-export const INITIAL_CARDS = [
-  { id: "card-1", brand: "Visa", last4: "4582", expiry: "08/26" },
-  { id: "card-2", brand: "Mastercard", last4: "8829", expiry: "03/27" },
-];
 
 export const GOLD_CARD = { label: "Gold Card", last4: "4821", brand: "Visa" };

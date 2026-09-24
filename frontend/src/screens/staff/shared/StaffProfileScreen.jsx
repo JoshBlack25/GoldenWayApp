@@ -59,6 +59,8 @@ export default function StaffProfileScreen() {
         </ul>
       </div>
 
+      {/* Agent self-service contact details (0011) — AGENT only */}
+
       <div className="mt-4 rounded-2xl border border-ink-900/10 bg-white p-5">
         <p className="eyebrow text-ink-900/45">SESSION</p>
         <p className="mt-2 text-[12.5px] text-ink-900/55">
