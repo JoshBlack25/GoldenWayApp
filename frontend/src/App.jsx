@@ -36,6 +36,8 @@ import NotificationsScreen from "./screens/commuter/Notifications/NotificationsS
 import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
 import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
 import TeamScreen from "./screens/staff/admin/TeamScreen";
+import CatalogScreen from "./screens/staff/admin/CatalogScreen";
+import AlertsScreen from "./screens/staff/admin/AlertsScreen";
 import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
 import RunsScreen from "./screens/staff/driver/RunsScreen";
 import InboxScreen from "./screens/staff/agent/InboxScreen";
@@ -79,8 +81,8 @@ const commuterTree = (
 const staffScreens = {
   onboarding: { element: <OnboardingScreen />, roles: ["ADMIN"] },
   team: { element: <TeamScreen />, roles: ["ADMIN"] },
-  catalog: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
-  alerts: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  catalog: { element: <CatalogScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  alerts: { element: <AlertsScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
   timetable: {
