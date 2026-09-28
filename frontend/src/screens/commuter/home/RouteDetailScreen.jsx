@@ -1,21 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import MapCanvas from "../../../components/MapCanvas";
 import RouteMap from "../../../components/map/RouteMap";
 import StopTimeline from "../../../components/StopTimeline";
-import { fetchRoutesFromDb, fetchDepartures, fetchLiveAlerts, fetchStops, serviceDayFor } from "../../../api/goldenway";
+import {
+  fetchRoutesFromDb,
+  fetchDepartures,
+  fetchLiveAlerts,
+  fetchStops,
+  serviceDayFor,
+} from "../../../api/goldenway";
 import { fetchLiveRuns } from "../../../api/operations";
 
 /**
- * Route 42 live tracking (D6, mock M4) — the timeline is derived from the
- * real route_departures table and the next-bus picks the first departure
- * that's still in the future. When a DRIVER reports DELAYED/BREAKDOWN on
- * this route (vehicle_runs → auto service_alert), the delay banner and
- * per-stop ETAs reflect the real report instead of hardcoded copy.
+ * Route detail / live tracking — generalized from the old hardcoded
+ * "Route 42" screen. The route is now resolved from the URL (:code)
+ * instead of a fixed constant, so this works for any route in the
+ * catalogue, reached via the Routes picker (RoutesScreen).
+ *
+ * The timeline is derived from the real route_departures table and the
+ * next-bus picks the first departure that's still in the future. When a
+ * DRIVER reports DELAYED/BREAKDOWN on this route (vehicle_runs → auto
+ * service_alert), the delay banner and per-stop ETAs reflect the real
+ * report instead of hardcoded copy.
  */
-
-const ROUTE_CODE = "KHA-CPT";
 
 function hhmm(iso) {
   return (iso || "").slice(0, 5);
@@ -28,7 +37,8 @@ function minutesUntil(hhmmStr, now = new Date()) {
   return Math.round((target - now) / 60000);
 }
 
-export default function Route42Screen() {
+export default function RouteDetailScreen() {
+  const { code } = useParams();
   const navigate = useNavigate();
   const [route, setRoute] = useState(null);
   const [departures, setDepartures] = useState([]);
@@ -48,7 +58,7 @@ export default function Route42Screen() {
     (async () => {
       try {
         const routes = await fetchRoutesFromDb();
-        const match = routes.find((r) => r.code === ROUTE_CODE) || routes[0];
+        const match = routes.find((r) => r.code === code);
         if (cancelled) return;
         setRoute(match || null);
         if (match) {
@@ -71,7 +81,7 @@ export default function Route42Screen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [code]);
 
   // Real stop coordinates for this route's endpoints (for the live map).
   // Matched by name against the origin/destination; falls back to null so
@@ -85,7 +95,10 @@ export default function Route42Screen() {
           name &&
           s.name.toLowerCase().includes(String(name).toLowerCase()),
       );
-    const [origin, destination] = [findStop(route.origin), findStop(route.destination)];
+    const [origin, destination] = [
+      findStop(route.origin),
+      findStop(route.destination),
+    ];
     return [origin, destination].filter(Boolean);
   }, [route, stops]);
 
@@ -100,7 +113,10 @@ export default function Route42Screen() {
     return Math.min(0.95, Math.max(0.05, elapsed));
   }, [run, routeStops.length, now]);
 
-  const delay = run?.status === "DELAYED" || run?.status === "BREAKDOWN" ? run.delayMinutes || (run.status === "BREAKDOWN" ? 20 : 0) : 0;
+  const delay =
+    run?.status === "DELAYED" || run?.status === "BREAKDOWN"
+      ? run.delayMinutes || (run.status === "BREAKDOWN" ? 20 : 0)
+      : 0;
 
   // Build the timeline from the next 4 departures from now (delay-aware).
   const upcoming = departures
@@ -109,15 +125,26 @@ export default function Route42Screen() {
     .slice(0, 4);
 
   const timeline = upcoming.map((d, i) => ({
-    label: i === 0 ? `${route?.origin || "Origin"} — next departure` : `${route?.origin || "Origin"} — later bus`,
+    label:
+      i === 0
+        ? `${route?.origin || "Origin"} — next departure`
+        : `${route?.origin || "Origin"} — later bus`,
     time: delay > 0 ? `${hhmm(d.iso)} (+${delay} min delay)` : hhmm(d.iso),
     state: i === 0 ? "current" : "upcoming",
   }));
 
   if (timeline.length === 0 && !loading) {
     timeline.push(
-      { label: `${route?.origin || "Origin"} terminal`, time: "No further departures today", state: "done" },
-      { label: route?.destination || "Destination", time: "Service resumes tomorrow", state: "upcoming" },
+      {
+        label: `${route?.origin || "Origin"} terminal`,
+        time: "No further departures today",
+        state: "done",
+      },
+      {
+        label: route?.destination || "Destination",
+        time: "Service resumes tomorrow",
+        state: "upcoming",
+      },
     );
   }
 
@@ -130,14 +157,18 @@ export default function Route42Screen() {
           <RouteMap
             routeStops={routeStops}
             progress={liveProgress}
-            routeLabel={route?.label || ROUTE_CODE}
+            routeLabel={route?.label || code}
           />
         ) : (
           <MapCanvas dark />
         )}
         <span
           className={`absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide text-white shadow ${
-            run?.status === "BREAKDOWN" ? "bg-brand-600" : run ? "bg-emerald-600" : "bg-slate-500"
+            run?.status === "BREAKDOWN"
+              ? "bg-brand-600"
+              : run
+                ? "bg-emerald-600"
+                : "bg-slate-500"
           }`}
         >
           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -156,19 +187,30 @@ export default function Route42Screen() {
       {alert && (
         <div className="mt-3 rounded-xl border border-brand-500/25 bg-brand-50 px-4 py-3">
           <p className="eyebrow text-brand-600">SERVICE ALERT</p>
-          <p className="text-[12.5px] font-medium text-ink-900 mt-0.5">{alert.title}</p>
-          {alert.body && <p className="text-[11.5px] text-ink-700/80 mt-0.5 leading-relaxed">{alert.body}</p>}
+          <p className="text-[12.5px] font-medium text-ink-900 mt-0.5">
+            {alert.title}
+          </p>
+          {alert.body && (
+            <p className="text-[11.5px] text-ink-700/80 mt-0.5 leading-relaxed">
+              {alert.body}
+            </p>
+          )}
         </div>
       )}
 
       <div className="mt-4">
         <p className="eyebrow text-gold-600">CURRENT ROUTE</p>
         <h1 className="font-display text-xl font-bold text-ink-900 mt-1">
-          {route ? `${route.origin} to ${route.destination}` : loading ? "Loading route…" : "Route unavailable"}
+          {route
+            ? `${route.origin} to ${route.destination}`
+            : loading
+              ? "Loading route…"
+              : "Route unavailable"}
         </h1>
         {route && (
           <p className="text-[11px] text-slate-500 mt-0.5">
-            {route.code} · {departures.length} departures today ({serviceDayFor().toLowerCase()})
+            {route.code} · {departures.length} departures today (
+            {serviceDayFor().toLowerCase()})
           </p>
         )}
       </div>
@@ -186,14 +228,22 @@ export default function Route42Screen() {
 
       <div className="card mt-4 px-4 py-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold tracking-wide text-slate-500">NEXT DEPARTURE</p>
+          <p className="text-[10px] font-semibold tracking-wide text-slate-500">
+            NEXT DEPARTURE
+          </p>
           <p className="font-display text-xl font-bold text-gold-600">
             {upcoming[0] ? hhmm(upcoming[0].iso) : "—"}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-semibold tracking-wide text-slate-500">STATUS</p>
-          <p className={`font-display text-[16px] font-bold ${delay > 0 ? "text-brand-600" : "text-emerald-600"}`}>
+          <p className="text-[10px] font-semibold tracking-wide text-slate-500">
+            STATUS
+          </p>
+          <p
+            className={`font-display text-[16px] font-bold ${
+              delay > 0 ? "text-brand-600" : "text-emerald-600"
+            }`}
+          >
             {run ? (delay > 0 ? `+${delay} min` : "On time") : "Scheduled"}
           </p>
         </div>
@@ -203,7 +253,13 @@ export default function Route42Screen() {
         <span className="flex items-center gap-2 text-[12px] font-medium text-ink-900">
           <RefreshIcon /> Live from driver reports
         </span>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${run ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+            run
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-slate-200 text-slate-600"
+          }`}
+        >
           {run ? "LIVE" : "IDLE"}
         </span>
       </div>
@@ -222,7 +278,13 @@ export default function Route42Screen() {
 
 function RefreshIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-gold-600" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-gold-600"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path d="M4 9.5A8 8 0 1 1 4.6 15" strokeLinecap="round" />
       <path d="M4 5v4.5h4.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>

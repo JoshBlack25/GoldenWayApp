@@ -1,23 +1,51 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import MapCanvas from "../../../components/MapCanvas";
 import TransactionRow from "../../../components/TransactionRow";
 import TripLoadError from "../../../components/TripLoadError";
 import { useTrips } from "../../../context/trip";
-import { fetchLiveAlerts } from "../../../api/goldenway";
+import { useAuth } from "../../../context/auth";
+import {
+  fetchLiveAlerts,
+  fetchRoutesFromDb,
+  fetchDepartures,
+  serviceDayFor,
+} from "../../../api/goldenway";
+import { fetchLiveRunsForRoutes } from "../../../api/operations";
+import {
+  activeRouteCodes,
+  nextDeparture,
+  routeStatus,
+} from "../../../utils/myRoutes";
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 /**
- * Home — answers Thandi's first three questions in five seconds:
+ * Home — answers a commuter's first questions in five seconds:
  *   1. "Can I still get to work?"  → live journey balance
- *   2. "Is my bus running?"        → live GABS service alerts
- *   3. "Am I saving?"              → Gold Card vs cash messaging
+ *   2. "Is my bus running?"        → alerts + status for MY routes
+ *   3. "When's the next one?"      → next departure per route
  */
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { rides, pass, transactions, card, cardBusy, passExpiresOn } = useTrips();
+  const { user } = useAuth();
+  const {
+    rides,
+    pass,
+    transactions,
+    card,
+    cardBusy,
+    passExpiresOn,
+    unlimitedPass,
+  } = useTrips();
   const [alerts, setAlerts] = useState([]);
   const recent = transactions.slice(0, 3);
+  const myRouteCodes = useMemo(() => activeRouteCodes(card), [card]);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,16 +61,31 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // Only alerts that affect this commuter: network-wide, or on a route
+  // they hold a live product for.
+  const relevantAlerts = useMemo(
+    () =>
+      alerts.filter((a) => !a.routeCode || myRouteCodes.includes(a.routeCode)),
+    [alerts, myRouteCodes],
+  );
+
   return (
     <div className="flex flex-col gap-5 px-5 pb-6">
+      <div>
+        <p className="text-[12px] text-slate-500">{greeting()}</p>
+        <h1 className="font-display text-[20px] font-bold text-ink-900 leading-tight">
+          {user?.firstName || "Welcome"}
+        </h1>
+      </div>
+
       {/* Card/balance load failure — never show a silent zero balance */}
       <TripLoadError />
 
-      {/* Live GABS service alerts */}
-      {alerts.length > 0 && (
+      {/* Live service alerts that affect me */}
+      {relevantAlerts.length > 0 && (
         <button
           type="button"
-          onClick={() => navigate("/support")}
+          onClick={() => navigate("/notifications")}
           className="flex items-start gap-2.5 rounded-xl border border-brand-500/25 bg-brand-50 px-4 py-3 text-left"
         >
           <AlertIcon />
@@ -51,12 +94,14 @@ export default function HomeScreen() {
               SERVICE ALERT
             </span>
             <span className="block text-[12px] font-medium text-ink-900 truncate">
-              {alerts[0].message || alerts[0].title || "Service notice for your routes"}
+              {relevantAlerts[0].title ||
+                relevantAlerts[0].body ||
+                "Service notice for your routes"}
             </span>
           </span>
-          {alerts.length > 1 && (
+          {relevantAlerts.length > 1 && (
             <span className="text-[11px] font-semibold text-brand-600 shrink-0">
-              +{alerts.length - 1}
+              +{relevantAlerts.length - 1}
             </span>
           )}
         </button>
@@ -70,14 +115,30 @@ export default function HomeScreen() {
           </div>
         ) : (
           <>
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-display text-4xl font-bold text-gold-500 leading-none">
-                {rides}
-              </span>
-              <span className="font-display text-[15px] font-semibold text-ink-900">
-                {rides === 1 ? "Journey" : "Journeys"} Left
-              </span>
-            </div>
+            {unlimitedPass ? (
+              <>
+                <span className="font-display text-3xl font-bold text-gold-500 leading-none">
+                  Unlimited
+                </span>
+                <span className="mt-1.5 font-display text-[15px] font-semibold text-ink-900">
+                  rides on {unlimitedPass.routeCode}
+                </span>
+                {rides > 0 && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    + {rides} Go Easy {rides === 1 ? "journey" : "journeys"}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-4xl font-bold text-gold-500 leading-none">
+                  {rides}
+                </span>
+                <span className="font-display text-[15px] font-semibold text-ink-900">
+                  {rides === 1 ? "Journey" : "Journeys"} Left
+                </span>
+              </div>
+            )}
             <div className="mt-3 flex items-center gap-2 rounded-full bg-cream-100 border border-gold-500/20 px-3 py-1">
               <PassIcon />
               <span className="text-[11px] font-semibold text-ink-900">
@@ -106,24 +167,24 @@ export default function HomeScreen() {
         )}
       </div>
 
-      {/* Live map */}
-      <button
-        type="button"
-        onClick={() => navigate("/route-42")}
-        className="relative h-44 overflow-hidden rounded-2xl border border-ink-900/5 text-left"
-        style={{ boxShadow: "var(--shadow-card-lg)" }}
-        aria-label="Open live route tracking"
-      >
-        <MapCanvas />
-        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold tracking-wide text-brand-500 shadow-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
-          LIVE TRACKING
-        </span>
-      </button>
+      {/* My routes — live status + next departure */}
+      <YourRoutesCard
+        loading={cardBusy && !card}
+        routeCodes={myRouteCodes}
+        onOpenAll={() => navigate("/routes")}
+        onOpenRoute={(code) => navigate(`/routes/${code}`)}
+      />
 
-      {/* Current route card */}
+      {/* Gold card */}
       <div className="card px-4 py-4 flex items-center gap-3">
-        <span className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}>
+        <span
+          className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
+          style={{
+            background: "linear-gradient(135deg, #ffd873, #f0b429)",
+            boxShadow: "var(--shadow-glow-gold)",
+            color: "var(--color-ink-900)",
+          }}
+        >
           <BusIcon />
         </span>
         <div className="min-w-0 flex-1">
@@ -160,14 +221,8 @@ export default function HomeScreen() {
             label="Timetable"
             onClick={() => navigate("/timetable")}
           />
-          <QuickAction
-            label="Top Up"
-            onClick={() => navigate("/load-trips")}
-          />
-          <QuickAction
-            label="Support"
-            onClick={() => navigate("/support")}
-          />
+          <QuickAction label="Top Up" onClick={() => navigate("/load-trips")} />
+          <QuickAction label="Support" onClick={() => navigate("/support")} />
         </div>
       </div>
 
@@ -204,6 +259,126 @@ export default function HomeScreen() {
   );
 }
 
+function YourRoutesCard({ loading, routeCodes, onOpenAll, onOpenRoute }) {
+  const [routes, setRoutes] = useState([]);
+  const [live, setLive] = useState({});
+  const [next, setNext] = useState({});
+
+  useEffect(() => {
+    if (routeCodes.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const shown = routeCodes.slice(0, 3);
+        const [all, liveMap] = await Promise.all([
+          fetchRoutesFromDb(),
+          fetchLiveRunsForRoutes(shown),
+        ]);
+        if (cancelled) return;
+        setRoutes(all.filter((r) => shown.includes(r.code)));
+        setLive(liveMap);
+        const entries = await Promise.all(
+          shown.map(async (code) => {
+            const deps = await fetchDepartures(
+              code,
+              "OUTBOUND",
+              serviceDayFor(),
+            ).catch(() => []);
+            return [code, nextDeparture(deps)];
+          }),
+        );
+        if (!cancelled) setNext(Object.fromEntries(entries));
+      } catch {
+        // Additive card — Home still works without it.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [routeCodes]);
+
+  // Early returns come AFTER the hooks above (rules of hooks).
+  if (loading) {
+    return (
+      <div className="card px-4 py-4">
+        <div className="skeleton h-3 w-24" />
+        <div className="skeleton h-10 w-full mt-3" />
+      </div>
+    );
+  }
+
+  if (routeCodes.length === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onOpenAll}
+        className="card px-4 py-4 text-left flex items-center justify-between"
+      >
+        <span>
+          <span className="block text-[10px] font-bold tracking-wide text-gold-600">
+            YOUR ROUTES
+          </span>
+          <span className="block text-[13px] text-slate-500 mt-0.5">
+            Load a trip to see live status for your route.
+          </span>
+        </span>
+        <span className="text-[12px] font-semibold text-gold-600 shrink-0">
+          Browse
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="card px-4 py-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] font-bold tracking-wide text-gold-600">
+          YOUR ROUTES
+        </p>
+        <button
+          type="button"
+          onClick={onOpenAll}
+          className="text-[12px] font-semibold text-gold-600"
+        >
+          See all
+        </button>
+      </div>
+      <div className="flex flex-col divide-y divide-ink-900/5">
+        {routes.map((r) => {
+          const status = routeStatus(live[r.code]);
+          const n = next[r.code];
+          return (
+            <button
+              key={r.code}
+              type="button"
+              onClick={() => onOpenRoute(r.code)}
+              className="flex items-center gap-3 py-3 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold text-ink-900 truncate">
+                  {r.origin} → {r.destination}
+                </span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
+                  {n
+                    ? n.mins === 0
+                      ? "Departing now"
+                      : `Next bus in ${n.mins} min · ${n.time}`
+                    : "No more departures today"}
+                </span>
+              </span>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${status.className}`}
+              >
+                {status.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function QuickAction({ label, onClick }) {
   return (
     <motion.button
@@ -222,33 +397,55 @@ function ActionIcon({ label }) {
   const cls = "h-4 w-4 text-gold-600";
   if (label === "Use Ticket")
     return (
-      <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg
+        viewBox="0 0 24 24"
+        className={cls}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
         <rect x="3" y="6" width="18" height="12" rx="2.2" />
         <path d="M14 7.5v9" strokeLinecap="round" strokeDasharray="1.6 2.2" />
       </svg>
     );
   if (label === "Top Up")
     return (
-      <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        viewBox="0 0 24 24"
+        className={cls}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M12 5v14M5 12h14" strokeLinecap="round" />
       </svg>
     );
   if (label === "Timetable")
     return (
-      <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg
+        viewBox="0 0 24 24"
+        className={cls}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
         <rect x="4" y="5" width="16" height="16" rx="2.2" />
         <path d="M4 10h16M8 3v4M16 3v4" strokeLinecap="round" />
-        <path d="M8.5 15.5h.01M15.5 15.5h.01" strokeWidth="2.4" strokeLinecap="round" />
-      </svg>
-    );
-  if (label === "Buy Pass")
-    return (
-      <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1.2a1.6 1.6 0 0 0 0 3.1V15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1.7a1.6 1.6 0 0 0 0-3.1V9z" strokeLinejoin="round" />
+        <path
+          d="M8.5 15.5h.01M15.5 15.5h.01"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        />
       </svg>
     );
   return (
-    <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className={cls}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path
         d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.9-.9L3 20l1-4.9a8.4 8.4 0 1 1 17-3.6z"
         strokeLinecap="round"
@@ -260,7 +457,13 @@ function ActionIcon({ label }) {
 
 function BusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-ink-900" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5 text-ink-900"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <rect x="4" y="5" width="16" height="12" rx="2.5" />
       <path d="M4 12h16M8 17v2M16 17v2" strokeLinecap="round" />
     </svg>
@@ -269,7 +472,13 @@ function BusIcon() {
 
 function PassIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-gold-600" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5 text-gold-600"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <rect x="3" y="6" width="18" height="12" rx="2.2" />
       <path d="M3 10h18" strokeLinecap="round" />
     </svg>
@@ -278,7 +487,13 @@ function PassIcon() {
 
 function AlertIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-brand-500 shrink-0 mt-0.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path d="M12 3l10 18H2L12 3z" strokeLinejoin="round" />
       <path d="M12 10v4M12 17.5v.01" strokeLinecap="round" />
     </svg>
