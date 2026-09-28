@@ -19,7 +19,8 @@ import StaffCompleteSignupScreen from "./screens/auth/StaffCompleteSignupScreen"
 // Commuter surfaces
 import HomeScreen from "./screens/commuter/home/HomeScreen";
 import TimetableScreen from "./screens/commuter/home/TimetableScreen";
-import Route42Screen from "./screens/commuter/home/Route42Screen";
+import RoutesScreen from "./screens/commuter/home/RoutesScreen";
+import RouteDetailScreen from "./screens/commuter/home/RouteDetailScreen";
 import SupportScreen from "./screens/commuter/home/SupportScreen";
 import LoadtripsScreen from "./screens/commuter/LoadTrips/LoadtripsScreen";
 import CardScreen from "./screens/commuter/Card/CardScreen";
@@ -57,7 +58,8 @@ const commuterTree = (
   >
     <Route path="/home" element={<HomeScreen />} />
     <Route path="/timetable" element={<TimetableScreen />} />
-    <Route path="/route-42" element={<Route42Screen />} />
+    <Route path="/routes" element={<RoutesScreen />} />
+    <Route path="/routes/:code" element={<RouteDetailScreen />} />
     <Route path="/support" element={<SupportScreen />} />
     <Route path="/load-trips" element={<LoadtripsScreen />} />
     <Route path="/card" element={<CardScreen />} />
