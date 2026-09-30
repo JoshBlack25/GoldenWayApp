@@ -13,6 +13,25 @@ import { activeRouteCodes } from "../../../utils/myRoutes";
  * decides whether it's a journey, a pass ride or a free transfer
  * (BR-04). A no-balance card routes straight to the top-up flow.
  */
+
+const LAST_ROUTE_KEY = "gw:lastRoute";
+
+function readLastRoute() {
+  try {
+    return localStorage.getItem(LAST_ROUTE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveLastRoute(code) {
+  try {
+    localStorage.setItem(LAST_ROUTE_KEY, code);
+  } catch {
+    /* storage unavailable — the picker still works */
+  }
+}
+
 export default function UseTicketScreen() {
   const navigate = useNavigate();
   const {
@@ -28,6 +47,7 @@ export default function UseTicketScreen() {
   const [routes, setRoutes] = useState([]);
   const [tapping, setTapping] = useState(false);
   const [error, setError] = useState("");
+  const [lastRoute] = useState(readLastRoute);
 
   // Real routes for the picker, Go-Easy-eligible ones first.
   useEffect(() => {
@@ -54,9 +74,14 @@ export default function UseTicketScreen() {
     [routes, myCodes],
   );
 
-  // One live route on the card → preselect it; otherwise the commuter picks.
+  // Your pick → last-used route (if still valid) → the one live route on the card.
+  const rememberedCode = routes.some((r) => r.code === lastRoute)
+    ? lastRoute
+    : "";
   const chosenCode =
-    routeCode || (myRoutes.length === 1 ? myRoutes[0].code : "");
+    routeCode ||
+    rememberedCode ||
+    (myRoutes.length === 1 ? myRoutes[0].code : "");
   const selectedRoute = useMemo(
     () => routes.find((r) => r.code === chosenCode) || null,
     [routes, chosenCode],
@@ -68,6 +93,7 @@ export default function UseTicketScreen() {
     setError("");
     try {
       const deduction = await deductRide(selectedRoute.code);
+      saveLastRoute(selectedRoute.code);
       navigate("/ride-success", {
         replace: true,
         state: { deduction, routeLabel: selectedRoute.label },
@@ -96,7 +122,7 @@ export default function UseTicketScreen() {
     <div className="flex flex-col items-center px-6 pb-8 min-h-full">
       <div className="flex items-center gap-2 w-full pb-4">
         <BackButton onClick={() => navigate("/card")} />
-        <h1 className="font-display text-lg font-bold text-gold-500">
+        <h1 className="font-display text-lg font-bold text-ink-900">
           Use Bus Ticket
         </h1>
       </div>
@@ -156,10 +182,10 @@ export default function UseTicketScreen() {
           </div>
         </div>
 
-        <div className="text-center">
+        <div className="text-center" aria-live="polite">
           <h2 className="font-display text-xl font-bold text-ink-900 leading-snug">
             {tapping
-              ? "Ticket validated"
+              ? "Validating your tap"
               : noBalance
                 ? "Your card is empty"
                 : unlimitedPass
@@ -169,8 +195,8 @@ export default function UseTicketScreen() {
           <p className="mt-2 flex items-center justify-center gap-2 text-[13px] text-slate-500">
             {tapping ? (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Validating&hellip;
+                <span className="h-1.5 w-1.5 rounded-full bg-gold-500 animate-pulse" />
+                Contacting the validator&hellip;
               </>
             ) : noBalance ? (
               <>
@@ -235,7 +261,7 @@ function BackButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="text-ink-900 text-xl leading-none px-1 -ml-1"
+      className="text-ink-900 text-xl leading-none px-2.5 py-2 -ml-2.5"
       aria-label="Back"
     >
       &larr;
@@ -247,7 +273,7 @@ function PinIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-gold-500 shrink-0"
+      className="h-4 w-4 text-gold-600 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -265,7 +291,7 @@ function ChevronIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-slate-400 shrink-0"
+      className="h-4 w-4 text-slate-500 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"

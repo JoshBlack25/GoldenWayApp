@@ -1,9 +1,6 @@
 import { motion } from "framer-motion";
 import StepperHeader from "./StepperHeader";
-import {
-  formatCents,
-  BR03_MESSAGE,
-} from "../data/loadTripsData";
+import { formatCents, BR03_MESSAGE } from "../data/loadTripsData";
 
 /**
  * Step 1 — live route + product selection. Routes and plans come from the
@@ -22,18 +19,22 @@ export default function RouteStep({
   routesBusy,
   routesError,
   quote,
+  quoteBusy = false,
   onChangeFrom,
   onChangeTo,
   onChangePlan,
   onRetryRoutes,
   onContinue,
+  onBack,
 }) {
   const excluded = Boolean(route && !route.goEasyEligible);
-  const plan = products.find((p) => p.id === planId) || null;
+  const selectedPlan = products.find((p) => p.id === planId) || null;
+  const total = quote?.priceCents ?? selectedPlan?.priceCents ?? 0;
+  const priceLoading = productsBusy || quoteBusy;
 
   return (
     <div className="flex flex-col">
-      <StepperHeader step={1} title="Ticket Setup" />
+      <StepperHeader step={1} title="Ticket Setup" onBack={onBack} />
 
       <div className="px-5 pt-5 flex flex-col gap-5">
         {/* Gold (transit) card being loaded — informational */}
@@ -52,18 +53,26 @@ export default function RouteStep({
           </h2>
 
           {routesBusy ? (
-            <div className="rounded-xl border border-ink-900/10 bg-white px-4 py-6 text-center text-[13px] text-slate-500">
-              Loading routes…
+            <div
+              className="flex flex-col gap-3"
+              aria-busy="true"
+              aria-label="Loading routes"
+            >
+              <div className="skeleton h-[74px] w-full" />
+              <div className="skeleton h-[74px] w-full" />
             </div>
           ) : routesError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center">
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-center"
+            >
               <p className="text-[13px] text-red-600">{routesError}</p>
               <button
                 type="button"
                 onClick={onRetryRoutes}
-                className="mt-2 text-[13px] font-semibold text-gold-600"
+                className="link-action mt-2 text-[13px] font-semibold text-gold-600"
               >
-                Retry
+                Try again
               </button>
             </div>
           ) : (
@@ -93,35 +102,49 @@ export default function RouteStep({
         </div>
 
         <div>
-          <h2 className="font-display font-semibold text-ink-900 text-[15px] mb-3">
+          <h2
+            id="plan-heading"
+            className="font-display font-semibold text-ink-900 text-[15px] mb-3"
+          >
             Select Ticket Plan
           </h2>
           {productsBusy ? (
-            <div className="rounded-xl border border-ink-900/10 bg-white px-4 py-6 text-center text-[13px] text-slate-500">
-              Loading fares…
+            <div
+              className="flex flex-col gap-3"
+              aria-busy="true"
+              aria-label="Loading fares"
+            >
+              <div className="skeleton h-[68px] w-full" />
+              <div className="skeleton h-[68px] w-full" />
+              <div className="skeleton h-[68px] w-full" />
             </div>
           ) : products.length === 0 ? (
             <div className="rounded-xl border border-ink-900/10 bg-white px-4 py-6 text-center text-[13px] text-slate-500">
               No ticket plans available for this route yet.
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {products.map((plan) => {
-                const active = plan.id === planId;
-                const perRide =
-                  plan.trips > 0 ? plan.priceCents / plan.trips : null;
+            <div
+              role="radiogroup"
+              aria-labelledby="plan-heading"
+              className="flex flex-col gap-3"
+            >
+              {products.map((p) => {
+                const active = p.id === planId;
+                const perRide = p.trips > 0 ? p.priceCents / p.trips : null;
                 return (
                   <button
-                    key={plan.id}
+                    key={p.id}
                     type="button"
-                    onClick={() => onChangePlan(plan.id)}
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => onChangePlan(p.id)}
                     className={`relative text-left rounded-xl border px-4 py-3.5 transition-colors ${
                       active
                         ? "border-gold-500 bg-cream-100"
                         : "border-ink-900/10 bg-white"
                     }`}
                   >
-                    {plan.goEasy && plan.transfersAllowed > 0 && (
+                    {p.goEasy && p.transfersAllowed > 0 && (
                       <span className="absolute -top-2.5 left-4 text-[10px] font-bold tracking-wide bg-gold-400 text-ink-900 px-2 py-0.5 rounded-full">
                         FREE TRANSFER
                       </span>
@@ -129,24 +152,24 @@ export default function RouteStep({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-ink-900 text-[15px]">
-                          {plan.label}
+                          {p.label}
                         </p>
                         <p className="text-[12px] text-slate-500 mt-0.5">
-                          {plan.trips > 0
-                            ? `${plan.trips} journeys · valid ${plan.validDays} days`
-                            : `Unlimited · valid ${plan.validDays} days`}
+                          {p.trips > 0
+                            ? `${p.trips} journeys · valid ${p.validDays} days`
+                            : `Unlimited · valid ${p.validDays} days`}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-display font-bold text-ink-900 text-[16px]">
-                          {formatCents(plan.priceCents)}
+                          {formatCents(p.priceCents)}
                         </p>
                         <p className="text-[11px] text-slate-500">
                           {perRide !== null
                             ? `${formatCents(perRide)} / ride`
-                            : plan.family === "WEEKLY"
+                            : p.family === "WEEKLY"
                               ? "per week"
-                              : plan.family === "MONTHLY"
+                              : p.family === "MONTHLY"
                                 ? "per month"
                                 : "per pass"}
                         </p>
@@ -172,29 +195,37 @@ export default function RouteStep({
       </div>
 
       <div className="mt-6 px-5 pb-6 flex items-center justify-between gap-4">
-        <div>
+        <div aria-live="polite">
           <p className="text-[11px] text-slate-500">Total Amount</p>
-          <p className="font-display font-bold text-ink-900 text-xl">
-            {formatCents(totalCents(route, quote, plan))}
-          </p>
+          {priceLoading ? (
+            <div
+              className="skeleton mt-1 h-6 w-20"
+              aria-label="Loading price"
+            />
+          ) : (
+            <p className="font-display font-bold text-ink-900 text-xl">
+              {formatCents(total)}
+            </p>
+          )}
         </div>
         <motion.button
           whileTap={{ scale: 0.97 }}
           type="button"
-          disabled={!route || !plan}
+          disabled={!route || !selectedPlan || priceLoading}
           onClick={onContinue}
           className="btn-gold px-6 py-3.5 text-[15px] gap-2 disabled:opacity-40"
         >
-          Continue <span aria-hidden="true">&rarr;</span>
+          {quoteBusy ? (
+            "Checking price…"
+          ) : (
+            <>
+              Continue <span aria-hidden="true">&rarr;</span>
+            </>
+          )}
         </motion.button>
       </div>
     </div>
   );
-}
-
-function totalCents(route, quote, plan) {
-  if (quote?.priceCents != null) return quote.priceCents;
-  return plan?.priceCents ?? 0;
 }
 
 function LocationSelect({ label, value, onChange, options, icon }) {
@@ -227,10 +258,11 @@ function PinIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-gold-500 shrink-0"
+      className="h-4 w-4 text-gold-600 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <path
         d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"
@@ -249,6 +281,7 @@ function FlagIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <path d="M6 21V4" strokeLinecap="round" />
       <path d="M6 4h11l-2.5 3.5L17 11H6" strokeLinejoin="round" />
@@ -260,10 +293,11 @@ function ChevronIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-slate-400 shrink-0"
+      className="h-4 w-4 text-slate-500 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
+      aria-hidden="true"
     >
       <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>

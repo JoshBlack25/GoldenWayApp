@@ -13,11 +13,11 @@ export default function DashboardHeader() {
   const { unread } = useNotifications() || {};
 
   return (
-    <div className="shrink-0 glass flex items-center justify-between px-5 pt-5 pb-3 z-10">
+    <div className="shrink-0 glass flex items-center justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-3 z-10">
       <button
         type="button"
         onClick={() => navigate("/profile")}
-        className="h-10 w-10 rounded-full p-[2px] shrink-0 transition-transform active:scale-95"
+        className="h-11 w-11 rounded-full p-[2px] shrink-0 transition-transform active:scale-95"
         style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)" }}
         aria-label="Open profile"
       >
@@ -30,10 +30,16 @@ export default function DashboardHeader() {
         to="/home"
         className="font-display text-[17px] font-bold tracking-tight flex flex-col items-center leading-none"
       >
-        <span className="bg-gradient-to-r from-gold-600 via-gold-500 to-gold-600 bg-clip-text text-transparent">
+        <span
+          className="bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, #8a6112 0%, #c58f1a 50%, #8a6112 100%)",
+          }}
+        >
           GoldenWay
         </span>
-        <span className="text-[8px] tracking-[0.3em] text-ink-900/45 font-semibold mt-1">
+        <span className="text-[9px] tracking-[0.3em] text-ink-900/60 font-semibold mt-1">
           THE BUS FOR US
         </span>
       </Link>
@@ -41,8 +47,10 @@ export default function DashboardHeader() {
       <button
         type="button"
         onClick={() => navigate("/notifications")}
-        className="relative h-10 w-10 rounded-full glass border border-ink-900/5 flex items-center justify-center shrink-0 text-ink-900/75 transition-colors hover:text-ink-900 active:scale-95"
-        aria-label="Notifications"
+        className="relative h-11 w-11 rounded-full glass border border-ink-900/5 flex items-center justify-center shrink-0 text-ink-900/75 transition-colors hover:text-ink-900 active:scale-95"
+        aria-label={
+          unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
+        }
       >
         <BellIcon />
         {unread > 0 && (

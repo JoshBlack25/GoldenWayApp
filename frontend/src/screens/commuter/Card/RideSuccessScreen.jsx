@@ -1,20 +1,39 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTrips } from "../../../context/trip";
+import TransferCountdown from "../../../components/TransferCountdown";
 
 /**
  * Real tap result from the backend Deduction:
  *   wasTransfer = true  → "Free transfer!" (BR-04, no journey deducted)
- *   wasTransfer = false → one journey deducted
+ *   wasTransfer = false → one journey deducted, and (if the product allows
+ *                         transfers) a 60-minute free-transfer window opens.
  */
 export default function RideSuccessScreen() {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const { rides, passExpiresOn } = useTrips();
+  const { rides, passExpiresOn, card } = useTrips();
 
   const deduction = state?.deduction || null;
-  const routeLabel = state?.routeLabel || deduction?.routeCode || "your journey";
-  const wasTransfer = Boolean(deduction?.wasTransfer);
+
+  // Refreshed or opened directly: there is no tap to show.
+  if (!deduction) return <Navigate to="/card" replace />;
+
+  const routeLabel = state?.routeLabel || deduction.routeCode || "your journey";
+  const wasTransfer = Boolean(deduction.wasTransfer ?? deduction.was_transfer);
+
+  const tappedRaw = deduction.deductedAt ?? deduction.deducted_at;
+  const tappedAt = tappedRaw ? new Date(tappedRaw).getTime() : Date.now();
+  const tappedTime = new Date(tappedAt).toLocaleTimeString("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const busId = deduction.busId ?? deduction.bus_id;
+
+  const productId = deduction.loadedProductId ?? deduction.loaded_product_id;
+  const product = card?.loadedProducts?.find((p) => p.id === productId);
+  const transferWindowOpen =
+    !wasTransfer && (product?.transfersAllowed ?? 0) > 0;
 
   return (
     <div className="flex flex-col px-6 pt-6 pb-8 min-h-full">
@@ -39,7 +58,13 @@ export default function RideSuccessScreen() {
               ? `You changed buses within 60 minutes — your transfer onto ${routeLabel} was free.`
               : `1 journey has been deducted for ${routeLabel}.`}
           </p>
+          <p className="mt-2 text-[12px] font-semibold text-ink-700">
+            Validated at {tappedTime}
+            {busId ? ` · Bus ${busId}` : ""}
+          </p>
         </div>
+
+        {transferWindowOpen && <TransferCountdown startedAt={tappedAt} />}
 
         <div className="w-full rounded-2xl bg-white border border-ink-900/5 shadow-[0_2px_14px_-6px_rgba(0,0,0,0.08)] px-4 py-4">
           <div className="flex items-center justify-between">
@@ -58,11 +83,14 @@ export default function RideSuccessScreen() {
           <div className="mt-3 pt-3 border-t border-ink-900/5 flex items-center gap-2 text-[12px] text-slate-500">
             <ClockIcon />
             {passExpiresOn
-              ? `Pass valid until ${new Date(passExpiresOn).toLocaleDateString("en-ZA", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}`
+              ? `Pass valid until ${new Date(passExpiresOn).toLocaleDateString(
+                  "en-ZA",
+                  {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  },
+                )}`
               : "Top up to keep your pass active"}
           </div>
         </div>

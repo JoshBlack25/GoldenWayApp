@@ -110,8 +110,14 @@ export default function HomeScreen() {
       {/* Rides remaining + pass — the "can I get to work" answer */}
       <div className="card-lg px-5 py-5 flex flex-col items-center text-center">
         {cardBusy && !card ? (
-          <div className="py-2 text-[13px] text-slate-400">
-            Loading your balance…
+          <div
+            className="w-full flex flex-col items-center gap-3 py-2"
+            aria-busy="true"
+            aria-label="Loading your balance"
+          >
+            <div className="skeleton h-10 w-28" />
+            <div className="skeleton h-4 w-40" />
+            <div className="skeleton h-6 w-32 !rounded-full" />
           </div>
         ) : (
           <>
@@ -201,7 +207,7 @@ export default function HomeScreen() {
         <button
           type="button"
           onClick={() => navigate("/card")}
-          className="text-[12px] font-semibold text-gold-600 shrink-0"
+          className="link-action text-[12px] font-semibold text-gold-600 shrink-0"
         >
           View
         </button>
@@ -212,11 +218,16 @@ export default function HomeScreen() {
         <h2 className="font-display text-[15px] font-bold text-ink-900 mb-3">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <QuickAction
-            label="Use Ticket"
+        <div className="grid grid-cols-3 gap-3">
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
             onClick={() => navigate("/use-ticket")}
-          />
+            className="col-span-3 btn-gold py-4 text-[14px]"
+          >
+            <ActionIcon label="Use Ticket" tone="dark" />
+            Use Ticket
+          </motion.button>
           <QuickAction
             label="Timetable"
             onClick={() => navigate("/timetable")}
@@ -235,7 +246,7 @@ export default function HomeScreen() {
           <button
             type="button"
             onClick={() => navigate("/history")}
-            className="text-[12px] font-semibold text-gold-600"
+            className="link-action text-[12px] font-semibold text-gold-600"
           >
             View All
           </button>
@@ -338,7 +349,7 @@ function YourRoutesCard({ loading, routeCodes, onOpenAll, onOpenRoute }) {
         <button
           type="button"
           onClick={onOpenAll}
-          className="text-[12px] font-semibold text-gold-600"
+          className="link-action text-[12px] font-semibold text-gold-600"
         >
           See all
         </button>
@@ -385,16 +396,16 @@ function QuickAction({ label, onClick }) {
       type="button"
       onClick={onClick}
       whileTap={{ scale: 0.97 }}
-      className="flex items-center justify-center gap-2 rounded-xl bg-white border border-gold-500/30 py-3.5 text-[13px] font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-all hover:border-gold-500 hover:-translate-y-px active:scale-[0.98]"
+      className="flex flex-col items-center justify-center gap-1.5 rounded-xl bg-white border border-gold-500/30 py-3.5 text-[12px] font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-all hover:border-gold-500 hover:-translate-y-px active:scale-[0.98]"
     >
-      <ActionIcon label={label} />
+      <ActionIcon label={label} tone="dark" />
       {label}
     </motion.button>
   );
 }
 
-function ActionIcon({ label }) {
-  const cls = "h-4 w-4 text-gold-600";
+function ActionIcon({ label, tone }) {
+  const cls = `h-4 w-4 ${tone === "dark" ? "text-ink-900" : "text-gold-600"}`;
   if (label === "Use Ticket")
     return (
       <svg
