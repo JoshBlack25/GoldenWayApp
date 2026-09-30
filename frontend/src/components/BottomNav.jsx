@@ -18,7 +18,11 @@ export default function BottomNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="shrink-0 glass px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2" style={{ boxShadow: "var(--shadow-nav)" }}>
+    <nav
+      aria-label="Main"
+      className="shrink-0 glass px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
+      style={{ boxShadow: "var(--shadow-nav)" }}
+    >
       <ul className="flex items-stretch justify-between">
         {TABS.map(({ to, label, Icon }) => {
           const active = pathname === to || pathname.startsWith(`${to}/`);
@@ -26,7 +30,7 @@ export default function BottomNav() {
             <li key={to} className="flex-1">
               <NavLink
                 to={to}
-                className="relative flex flex-col items-center gap-1 py-1.5 outline-none"
+                className="relative flex flex-col items-center gap-1 py-1.5 rounded-xl"
               >
                 <span className="relative h-9 w-9 flex items-center justify-center">
                   {active && (
@@ -38,7 +42,11 @@ export default function BottomNav() {
                         damping: 30,
                       }}
                       className="absolute inset-0 rounded-full"
-                      style={{ background: "linear-gradient(135deg, #ffd873 0%, #ffc52e 45%, #f0b429 100%)", boxShadow: "var(--shadow-glow-gold)" }}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #ffd873 0%, #ffc52e 45%, #f0b429 100%)",
+                        boxShadow: "var(--shadow-glow-gold)",
+                      }}
                     />
                   )}
                   <motion.span
@@ -48,14 +56,14 @@ export default function BottomNav() {
                   >
                     <Icon
                       className={`h-4.5 w-4.5 ${
-                        active ? "text-ink-900" : "text-slate-400"
+                        active ? "text-ink-900" : "text-slate-500"
                       }`}
                     />
                   </motion.span>
                 </span>
                 <span
                   className={`text-[11px] leading-none transition-colors ${
-                    active ? "font-semibold text-gold-700" : "text-slate-400"
+                    active ? "font-semibold text-gold-700" : "text-slate-500"
                   }`}
                 >
                   {label}

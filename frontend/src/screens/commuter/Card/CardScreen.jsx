@@ -133,7 +133,7 @@ export default function CardScreen() {
           <button
             type="button"
             onClick={() => navigate("/history")}
-            className="text-[12px] font-semibold text-gold-600"
+            className="link-action text-[12px] font-semibold text-gold-600"
           >
             VIEW ALL
           </button>
@@ -185,14 +185,14 @@ function CardNumberRow({ cardNumber }) {
         <button
           type="button"
           onClick={() => setShown((s) => !s)}
-          className="text-[12px] font-semibold text-gold-600"
+          className="link-action text-[12px] font-semibold text-gold-600"
         >
           {shown ? "Hide" : "Show"}
         </button>
         <button
           type="button"
           onClick={copy}
-          className="text-[12px] font-semibold text-gold-600"
+          className="link-action text-[12px] font-semibold text-gold-600"
         >
           {copied ? "Copied" : "Copy"}
         </button>
@@ -234,10 +234,19 @@ function ProductRow({ p }) {
         </span>
       </div>
       {!unlimited && (
-        <div className="mt-3 h-1.5 rounded-full bg-cream-200 overflow-hidden">
-          <div
+        <div
+          className="mt-3 h-1.5 rounded-full bg-cream-200 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Journeys remaining"
+        >
+          <motion.div
             className="h-full rounded-full bg-gold-500"
-            style={{ width: `${pct}%` }}
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           />
         </div>
       )}

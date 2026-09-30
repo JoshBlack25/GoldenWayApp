@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTrips } from "../../../context/trip";
@@ -18,16 +18,17 @@ import {
 
 /**
  * Load Trips — the real purchase flow against the GoldenWay backend:
- *   1. Route        live routes from /fares/routes, live plans per route,
- *                   save-vs-cash quote from /fares/quote (BR-09, BR-03)
- *   2. Payment      demo wallet (no payment-card backend yet)
+ *   1. Route        live routes, live plans per route, save-vs-cash
+ *                   quote (BR-09 price authority, BR-03 exclusions)
+ *   2. Payment      the user's saved payment methods (0016 wallet)
  *   3. Review       quote total in cents, GABS savings messaging
  *   4. Confirmation real TopUpOrder: order → pay → product loaded onto
  *                   the card; receipt reference comes from the database.
  */
 export default function LoadtripsScreen() {
   const navigate = useNavigate();
-  const { purchase, paymentMethods, savePaymentMethod } = useTrips();
+  const { purchase, paymentMethods, savePaymentMethod, removePaymentMethod } =
+    useTrips();
 
   const [phase, setPhase] = useState("route"); // route | payment | review | confirmation | receipt
   const [routes, setRoutes] = useState([]);
@@ -41,21 +42,36 @@ export default function LoadtripsScreen() {
   const [planId, setPlanId] = useState("");
 
   const [quote, setQuote] = useState(null);
-  const [, setQuoteBusy] = useState(false);
+  const [quoteBusy, setQuoteBusy] = useState(false);
 
   const [selectedCardId, setSelectedCardId] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
   const [cardError, setCardError] = useState("");
   const [receipt, setReceipt] = useState(null);
+
+  const topRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  // Change step and reset scroll so the new step always starts at the top.
+  const goTo = useCallback((next) => {
+    setPhase(next);
+    topRef.current?.scrollIntoView({ block: "start" });
+  }, []);
 
   // Mirror the DB wallet (0016) into the step-component card shape.
   const cards = useMemo(
     () =>
       paymentMethods.map((m) => ({
         id: m.id,
-        brand: m.brand === "VISA" ? "Visa" : m.brand === "MASTERCARD" ? "Mastercard" : "Card",
+        brand:
+          m.brand === "VISA"
+            ? "Visa"
+            : m.brand === "MASTERCARD"
+              ? "Mastercard"
+              : "Card",
         last4: m.last4,
         expiry: `${String(m.expMonth).padStart(2, "0")}/${String(m.expYear).slice(-2)}`,
         isDefault: m.isDefault,
@@ -73,30 +89,33 @@ export default function LoadtripsScreen() {
 
   const selectedCard = cards.find((c) => c.id === selectedCardId) || null;
 
-  // 1. Live route catalogue on mount.
-  useEffect(() => {
-    let cancelled = false;
+  // 1. Live route catalogue — on mount, and again on "Try again".
+  const loadRoutes = useCallback(async () => {
     setRoutesBusy(true);
-    fetchRoutes()
-      .then((list) => {
-        if (cancelled) return;
-        setRoutes(list);
-        if (list.length) {
-          setFrom(list[0].from);
-          setTo(list[0].to);
-        }
-      })
-      .catch(() => {
-        if (!cancelled)
-          setRoutesError("Could not load the route catalogue. Pull down to retry.");
-      })
-      .finally(() => {
-        if (!cancelled) setRoutesBusy(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    setRoutesError("");
+    try {
+      const list = await fetchRoutes();
+      if (!mountedRef.current) return;
+      setRoutes(list);
+      if (list.length) {
+        setFrom(list[0].from);
+        setTo(list[0].to);
+      }
+    } catch {
+      if (mountedRef.current)
+        setRoutesError("Could not load the route catalogue. Please try again.");
+    } finally {
+      if (mountedRef.current) setRoutesBusy(false);
+    }
   }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    loadRoutes();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadRoutes]);
 
   const route = useMemo(
     () => routes.find((r) => r.from === from && r.to === to) || null,
@@ -138,12 +157,11 @@ export default function LoadtripsScreen() {
     [products, planId],
   );
 
-  // 3. Save-vs-cash quote for the selection.
+  // 3. Save-vs-cash quote for the selection. The old quote is cleared
+  //    immediately so a stale price can never be shown for a new plan.
   useEffect(() => {
-    if (!route || !plan) {
-      setQuote(null);
-      return;
-    }
+    setQuote(null);
+    if (!route || !plan) return;
     let cancelled = false;
     setQuoteBusy(true);
     fetchQuote(route.code, plan.id)
@@ -164,7 +182,9 @@ export default function LoadtripsScreen() {
   const totalCents = quote?.priceCents ?? plan?.priceCents ?? 0;
 
   async function handleAddCard(newCard) {
-    if (cards.length >= MAX_SAVED_CARDS) return;
+    if (cards.length >= MAX_SAVED_CARDS || savingCard) return;
+    setCardError("");
+    setSavingCard(true);
     try {
       const saved = await savePaymentMethod(newCard);
       setSelectedCardId(saved.id);
@@ -172,7 +192,11 @@ export default function LoadtripsScreen() {
     } catch (err) {
       // Surface save failures right in the drawer (e.g. migration 0016
       // not applied, RLS denial) instead of failing silently.
-      setCardError(err?.message || "Could not save the card. Please try again.");
+      setCardError(
+        err?.message || "Could not save the card. Please try again.",
+      );
+    } finally {
+      setSavingCard(false);
     }
   }
 
@@ -184,7 +208,7 @@ export default function LoadtripsScreen() {
     try {
       const order = await purchase(plan.trips, plan.label, plan.label, {
         productCode: plan.id,
-        routeCode: plan.family === "GO_EASY" ? route.code : route.code,
+        routeCode: route.code,
         amountCents: totalCents,
         paymentMethodId: selectedCardId || null,
       });
@@ -208,7 +232,7 @@ export default function LoadtripsScreen() {
           minute: "2-digit",
         }),
       });
-      setPhase("confirmation");
+      goTo("confirmation");
     } catch (err) {
       setPayError(
         err?.status === 400
@@ -218,7 +242,17 @@ export default function LoadtripsScreen() {
     } finally {
       setPaying(false);
     }
-  }, [route, plan, paying, purchase, totalCents, quote, selectedCard, selectedCardId]);
+  }, [
+    route,
+    plan,
+    paying,
+    purchase,
+    totalCents,
+    quote,
+    selectedCard,
+    selectedCardId,
+    goTo,
+  ]);
 
   function handleBackToHome() {
     setPhase("route");
@@ -231,12 +265,15 @@ export default function LoadtripsScreen() {
   );
   const destinations = useMemo(
     () =>
-      [...new Set(routes.filter((r) => r.from === from).map((r) => r.to))].sort(),
+      [
+        ...new Set(routes.filter((r) => r.from === from).map((r) => r.to)),
+      ].sort(),
     [routes, from],
   );
 
   return (
     <div className="relative">
+      <div ref={topRef} aria-hidden="true" />
       <AnimatePresence mode="wait">
         <motion.div
           key={phase}
@@ -255,19 +292,20 @@ export default function LoadtripsScreen() {
               planId={planId}
               products={products}
               productsBusy={productsBusy}
+              onBack={() => navigate(-1)}
               routesBusy={routesBusy}
               routesError={routesError}
               quote={quote}
+              quoteBusy={quoteBusy}
               onChangeFrom={(next) => {
                 setFrom(next);
-                const firstTo =
-                  routes.find((r) => r.from === next)?.to || "";
+                const firstTo = routes.find((r) => r.from === next)?.to || "";
                 setTo(firstTo);
               }}
               onChangeTo={setTo}
               onChangePlan={setPlanId}
-              onRetryRoutes={() => window.location.reload()}
-              onContinue={() => setPhase("payment")}
+              onRetryRoutes={loadRoutes}
+              onContinue={() => goTo("payment")}
             />
           )}
 
@@ -277,12 +315,13 @@ export default function LoadtripsScreen() {
               plan={plan}
               quote={quote}
               totalCents={totalCents}
+              onRemoveCard={removePaymentMethod}
               cards={cards}
               selectedCardId={selectedCardId}
               onSelectCard={setSelectedCardId}
               onOpenAddCard={() => setDrawerOpen(true)}
-              onBackToRoute={() => setPhase("route")}
-              onContinue={() => setPhase("review")}
+              onBackToRoute={() => goTo("route")}
+              onContinue={() => goTo("review")}
             />
           )}
 
@@ -295,7 +334,7 @@ export default function LoadtripsScreen() {
               card={selectedCard}
               payError={payError}
               paying={paying}
-              onChangePayment={() => setPhase("payment")}
+              onChangePayment={() => goTo("payment")}
               onPayNow={handlePayNow}
             />
           )}
@@ -304,14 +343,14 @@ export default function LoadtripsScreen() {
             <ConfirmationStep
               receipt={receipt}
               onBackToHome={handleBackToHome}
-              onViewReceipt={() => setPhase("receipt")}
+              onViewReceipt={() => goTo("receipt")}
             />
           )}
 
           {phase === "receipt" && receipt && (
             <ReceiptView
               receipt={receipt}
-              onBack={() => setPhase("confirmation")}
+              onBack={() => goTo("confirmation")}
             />
           )}
         </motion.div>
@@ -325,6 +364,7 @@ export default function LoadtripsScreen() {
         }}
         onSave={handleAddCard}
         error={cardError}
+        saving={savingCard}
       />
     </div>
   );
