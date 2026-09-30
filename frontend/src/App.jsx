@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import AuthProvider from "./context/AuthProvider";
 import ProtectedRoute from "./context/ProtectedRoute";
@@ -11,40 +12,85 @@ import ResetPasswordScreen from "./screens/auth/ResetPasswordScreen";
 import StaffSignupScreen from "./screens/auth/StaffSignupScreen";
 import AccountCreatedScreen from "./screens/auth/AccountCreatedScreen";
 import CheckEmailScreen from "./screens/auth/CheckEmailScreen";
+import StaffCompleteSignupScreen from "./screens/auth/StaffCompleteSignupScreen";
 import NotFoundScreen from "./screens/NotFoundScreen";
 import DashboardLayout from "./layout/DashboardLayout";
 import StaffLayout from "./layout/StaffLayout";
-import StaffCompleteSignupScreen from "./screens/auth/StaffCompleteSignupScreen";
 
-// Commuter surfaces
-import HomeScreen from "./screens/commuter/home/HomeScreen";
-import TimetableScreen from "./screens/commuter/home/TimetableScreen";
-import RoutesScreen from "./screens/commuter/home/RoutesScreen";
-import RouteDetailScreen from "./screens/commuter/home/RouteDetailScreen";
-import SupportScreen from "./screens/commuter/home/SupportScreen";
-import LoadtripsScreen from "./screens/commuter/LoadTrips/LoadtripsScreen";
-import CardScreen from "./screens/commuter/Card/CardScreen";
-import UseTicketScreen from "./screens/commuter/Card/UseTicketScreen";
-import RideSuccessScreen from "./screens/commuter/Card/RideSuccessScreen";
-import HistoryScreen from "./screens/commuter/History/HistoryScreen";
-import TripScreen from "./screens/commuter/History/TripScreen";
-import ProfileScreen from "./screens/commuter/Profile/ProfileScreen";
-import UpdateProfileScreen from "./screens/commuter/Profile/UpdateProfileScreen";
-import NotificationsScreen from "./screens/commuter/Notifications/NotificationsScreen";
+// Commuter surfaces (lazy — each screen is its own chunk)
+const HomeScreen = lazy(() => import("./screens/commuter/home/HomeScreen"));
+const TimetableScreen = lazy(
+  () => import("./screens/commuter/home/TimetableScreen"),
+);
+const RoutesScreen = lazy(() => import("./screens/commuter/home/RoutesScreen"));
+const RouteDetailScreen = lazy(
+  () => import("./screens/commuter/home/RouteDetailScreen"),
+);
+const SupportScreen = lazy(
+  () => import("./screens/commuter/home/SupportScreen"),
+);
+const LoadtripsScreen = lazy(
+  () => import("./screens/commuter/LoadTrips/LoadtripsScreen"),
+);
+const CardScreen = lazy(() => import("./screens/commuter/Card/CardScreen"));
+const UseTicketScreen = lazy(
+  () => import("./screens/commuter/Card/UseTicketScreen"),
+);
+const RideSuccessScreen = lazy(
+  () => import("./screens/commuter/Card/RideSuccessScreen"),
+);
+const HistoryScreen = lazy(
+  () => import("./screens/commuter/History/HistoryScreen"),
+);
+const TripScreen = lazy(() => import("./screens/commuter/History/TripScreen"));
+const ProfileScreen = lazy(
+  () => import("./screens/commuter/Profile/ProfileScreen"),
+);
+const UpdateProfileScreen = lazy(
+  () => import("./screens/commuter/Profile/UpdateProfileScreen"),
+);
+const NotificationsScreen = lazy(
+  () => import("./screens/commuter/Notifications/NotificationsScreen"),
+);
 
-// Staff console — shared + per-role (one folder per team lane)
-import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
-import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
-import TeamScreen from "./screens/staff/admin/TeamScreen";
-import CatalogScreen from "./screens/staff/admin/CatalogScreen";
-import AlertsScreen from "./screens/staff/admin/AlertsScreen";
-import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
-import RunsScreen from "./screens/staff/driver/RunsScreen";
-import InboxScreen from "./screens/staff/agent/InboxScreen";
-import ChatScreen from "./screens/staff/agent/ChatScreen";
-import KioskScreen from "./screens/staff/clerk/KioskScreen";
-import ConcessionsScreen from "./screens/staff/clerk/ConcessionsScreen";
-import StaffProfileScreen from "./screens/staff/shared/StaffProfileScreen";
+// Staff console (lazy — staff code never downloads for commuters)
+const StaffHomeScreen = lazy(
+  () => import("./screens/staff/shared/StaffHomeScreen"),
+);
+const StaffProfileScreen = lazy(
+  () => import("./screens/staff/shared/StaffProfileScreen"),
+);
+const OnboardingScreen = lazy(
+  () => import("./screens/staff/admin/OnboardingScreen"),
+);
+const TeamScreen = lazy(() => import("./screens/staff/admin/TeamScreen"));
+const CatalogScreen = lazy(() => import("./screens/staff/admin/CatalogScreen"));
+const AlertsScreen = lazy(() => import("./screens/staff/admin/AlertsScreen"));
+const VerifyScreen = lazy(
+  () => import("./screens/staff/inspector/VerifyScreen"),
+);
+const RunsScreen = lazy(() => import("./screens/staff/driver/RunsScreen"));
+const InboxScreen = lazy(() => import("./screens/staff/agent/InboxScreen"));
+const ChatScreen = lazy(() => import("./screens/staff/agent/ChatScreen"));
+const KioskScreen = lazy(() => import("./screens/staff/clerk/KioskScreen"));
+const ConcessionsScreen = lazy(
+  () => import("./screens/staff/clerk/ConcessionsScreen"),
+);
+
+/** Per-screen Suspense so layouts/nav stay mounted while a chunk loads. */
+function Lazy({ children }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-[13px] text-slate-400">
+          Loading…
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 const commuterTree = (
   <Route
@@ -56,20 +102,118 @@ const commuterTree = (
       </ProtectedRoute>
     }
   >
-    <Route path="/home" element={<HomeScreen />} />
-    <Route path="/timetable" element={<TimetableScreen />} />
-    <Route path="/routes" element={<RoutesScreen />} />
-    <Route path="/routes/:code" element={<RouteDetailScreen />} />
-    <Route path="/support" element={<SupportScreen />} />
-    <Route path="/load-trips" element={<LoadtripsScreen />} />
-    <Route path="/card" element={<CardScreen />} />
-    <Route path="/use-ticket" element={<UseTicketScreen />} />
-    <Route path="/ride-success" element={<RideSuccessScreen />} />
-    <Route path="/history" element={<HistoryScreen />} />
-    <Route path="/trip" element={<TripScreen />} />
-    <Route path="/profile" element={<ProfileScreen />} />
-    <Route path="/profile/update" element={<UpdateProfileScreen />} />
-    <Route path="/notifications" element={<NotificationsScreen />} />
+    <Route
+      path="/home"
+      element={
+        <Lazy>
+          <HomeScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/timetable"
+      element={
+        <Lazy>
+          <TimetableScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/routes"
+      element={
+        <Lazy>
+          <RoutesScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/routes/:code"
+      element={
+        <Lazy>
+          <RouteDetailScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/support"
+      element={
+        <Lazy>
+          <SupportScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/load-trips"
+      element={
+        <Lazy>
+          <LoadtripsScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/card"
+      element={
+        <Lazy>
+          <CardScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/use-ticket"
+      element={
+        <Lazy>
+          <UseTicketScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/ride-success"
+      element={
+        <Lazy>
+          <RideSuccessScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/history"
+      element={
+        <Lazy>
+          <HistoryScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/trip"
+      element={
+        <Lazy>
+          <TripScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/profile"
+      element={
+        <Lazy>
+          <ProfileScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/profile/update"
+      element={
+        <Lazy>
+          <UpdateProfileScreen />
+        </Lazy>
+      }
+    />
+    <Route
+      path="/notifications"
+      element={
+        <Lazy>
+          <NotificationsScreen />
+        </Lazy>
+      }
+    />
   </Route>
 );
 
@@ -125,7 +269,14 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<StaffHomeScreen />} />
+            <Route
+              index
+              element={
+                <Lazy>
+                  <StaffHomeScreen />
+                </Lazy>
+              }
+            />
             {Object.entries(staffScreens).map(([slug, cfg]) =>
               slug === PROFILE_ROUTE_KEY ? null : (
                 <Route
@@ -134,7 +285,7 @@ export default function App() {
                   element={
                     cfg.element ? (
                       <ProtectedRoute staff roles={cfg.roles}>
-                        {cfg.element}
+                        <Lazy>{cfg.element}</Lazy>
                       </ProtectedRoute>
                     ) : (
                       <ComingSoon slug={slug} />
@@ -148,7 +299,9 @@ export default function App() {
               path="profile"
               element={
                 <ProtectedRoute staff>
-                  <StaffProfileScreen />
+                  <Lazy>
+                    <StaffProfileScreen />
+                  </Lazy>
                 </ProtectedRoute>
               }
             />

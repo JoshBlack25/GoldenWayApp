@@ -8,7 +8,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
  */
 
 const insertSingle = vi.fn();
-const insertMock = vi.fn(() => ({ select: vi.fn(() => ({ single: insertSingle })) }));
+const insertMock = vi.fn(() => ({
+  select: vi.fn(() => ({ single: insertSingle })),
+}));
 const selectOrdered = vi.fn();
 
 vi.mock("../lib/supabaseClient", () => ({
@@ -26,10 +28,13 @@ vi.mock("../lib/supabaseClient", () => ({
   },
 }));
 
-vi.mock("../../screens/commuter/LoadTrips/data/loadTripsData", async (importOriginal) => {
-  const mod = await importOriginal();
-  return { detectCardBrand: mod.detectCardBrand };
-});
+vi.mock(
+  "../../screens/commuter/LoadTrips/data/loadTripsData",
+  async (importOriginal) => {
+    const mod = await importOriginal();
+    return { detectCardBrand: mod.detectCardBrand };
+  },
+);
 
 import { addPaymentMethod, mapPaymentMethod } from "./paymentMethods.js";
 
@@ -41,7 +46,16 @@ describe("payment wallet (0016)", () => {
 
   it("persists only tokenized fields — never the full PAN or CVV", async () => {
     insertSingle.mockResolvedValue({
-      data: { id: "new-1", brand: "VISA", last4: "4242", exp_month: 8, exp_year: 2028, holder_name: "Thandi Mkhize", is_default: false, created_at: "2026-01-01" },
+      data: {
+        id: "new-1",
+        brand: "VISA",
+        last4: "4242",
+        exp_month: 8,
+        exp_year: 2028,
+        holder_name: "Thandi Mkhize",
+        is_default: false,
+        created_at: "2026-01-01",
+      },
       error: null,
     });
 
@@ -56,7 +70,7 @@ describe("payment wallet (0016)", () => {
     const row = insertMock.mock.calls[0][0];
     expect(JSON.stringify(row)).not.toContain("4242424242424242");
     expect(row.last4).toBe("4242");
-    expect(row.brand).toBe("Visa");
+    expect(row.brand).toBe("VISA");
     expect(row.holder_name).toBe("Thandi Mkhize");
     expect(row.cvv).toBeUndefined();
   });
@@ -69,7 +83,11 @@ describe("payment wallet (0016)", () => {
 
   it("rejects an out-of-range expiry month", async () => {
     await expect(
-      addPaymentMethod({ number: "4242424242424242", expMonth: 13, expYear: 2028 }),
+      addPaymentMethod({
+        number: "4242424242424242",
+        expMonth: 13,
+        expYear: 2028,
+      }),
     ).rejects.toThrow(/Expiry month/);
   });
 
@@ -96,4 +114,3 @@ describe("payment wallet (0016)", () => {
     });
   });
 });
-
