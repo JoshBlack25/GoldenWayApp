@@ -13,6 +13,25 @@
  * straight from these tables.
  */
 
+<<<<<<< HEAD
+=======
+import {
+  HomeIcon,
+  TicketIcon,
+  CardIcon,
+  HistoryIcon,
+  ProfileIcon,
+  ScanIcon,
+  BusIcon,
+  InboxIcon,
+  ChatIcon,
+  KioskIcon,
+  PeopleIcon,
+  CatalogIcon,
+  AlertIcon,
+} from "./navigationIcons";
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 // --- shared icon set (identical glyphs across both surfaces) ----------
 export const Icons = {
   home: HomeIcon,
@@ -23,6 +42,10 @@ export const Icons = {
   verify: ScanIcon,
   bus: BusIcon,
   inbox: InboxIcon,
+<<<<<<< HEAD
+=======
+  chat: ChatIcon,
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   kiosk: KioskIcon,
   people: PeopleIcon,
   catalog: CatalogIcon,
@@ -69,7 +92,11 @@ export const STAFF_TABS = {
   AGENT: [
     { to: "/staff", label: "Home", icon: "home", end: true },
     { to: "/staff/inbox", label: "Inbox", icon: "inbox" },
+<<<<<<< HEAD
     { to: "/staff/faq", label: "Snippets", icon: "ticket" }, // Raul S2-A4
+=======
+    { to: "/staff/chats", label: "Chats", icon: "chat" }, // live chat log (was "Snippets" placeholder)
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     { to: "/staff/profile", label: "Profile", icon: "profile" },
   ],
 };
@@ -78,6 +105,7 @@ export function tabsForRole(role) {
   return STAFF_TABS[role] || STAFF_TABS.AGENT;
 }
 
+<<<<<<< HEAD
 /* ------------------------------------------------------------------ */
 /* inline icons — one stroke style, 1.8 width, 24px grid               */
 /* ------------------------------------------------------------------ */
@@ -192,3 +220,5 @@ function AlertIcon({ className }) {
     </svg>
   );
 }
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc

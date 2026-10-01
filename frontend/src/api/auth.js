@@ -63,9 +63,27 @@ export async function fetchMyProfileType() {
   }
 }
 
+<<<<<<< HEAD
 /**
  * One sign-in for everyone. Resolves { profileType, staff } so the UI can
  * route commuters to the app and staff to the console.
+=======
+/** Pre-check before submitting a staff request: is this email free of
+ * any existing account (commuter or staff)? */
+export async function checkEmailAvailableForStaff(email) {
+  return rpc("check_email_available_for_staff", { p_email: email.trim() });
+}
+
+/**
+ * One sign-in for everyone. Resolves { profileType, staff } so the UI can
+ * route commuters to the app and staff to the console.
+ *
+ * 0012 approval gate: valid credentials are NOT enough for staff — the
+ * account must have a public.staff row (created by the approval trigger).
+ * An UNPROFILED account is an applicant whose request is still PENDING
+ * (or was denied); we sign them straight back out with a clear message.
+ * The admin console remains the only door into the staff dashboards.
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
  */
 export async function loginAny(email, password) {
   const { error } = await supabase.auth.signInWithPassword({
@@ -75,6 +93,44 @@ export async function loginAny(email, password) {
   if (error) throw fail(error, 401);
 
   const profile = await fetchMyProfileType();
+<<<<<<< HEAD
+=======
+
+  if (profile?.userType === "UNPROFILED") {
+    // Signed in, but no profile: staff applicant awaiting a decision.
+    let status = null;
+    try {
+      status = await fetchMyStaffRequestStatus();
+    } catch {
+      status = null;
+    }
+    await supabase.auth.signOut();
+    if (status?.status === "PENDING") {
+      throw new ApiError(403, {
+        error:
+          "Your staff request is still awaiting admin approval — sign in once it has been approved.",
+      });
+    }
+    if (status?.status === "APPROVED") {
+      throw new ApiError(403, {
+        error:
+          "Your approval is being finalised — try signing in again in a moment.",
+      });
+    }
+    if (status?.status === "DENIED") {
+      throw new ApiError(403, {
+        error: status.note
+          ? `Your staff request was denied: ${status.note}`
+          : "Your staff request was denied. Contact a GoldenWay admin.",
+      });
+    }
+    throw new ApiError(403, {
+      error:
+        "This account has no GoldenWay profile yet. Staff can sign in only after an admin approves their request.",
+    });
+  }
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   if (profile?.userType === "STAFF") {
     return {
       profileType: "STAFF",
@@ -84,6 +140,10 @@ export async function loginAny(email, password) {
         firstName: profile.firstName,
         surname: profile.surname,
         email: profile.email,
+<<<<<<< HEAD
+=======
+        phone: profile.phone ?? null,
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       },
     };
   }
@@ -95,7 +155,17 @@ export async function loginAny(email, password) {
 // ---------------------------------------------------------------------
 
 /** Public "Staff sign-up" form → lands in the ADMIN approval queue. */
+<<<<<<< HEAD
 export async function requestStaffAccess({ email, firstName, surname, requestedRole, motivation }) {
+=======
+export async function requestStaffAccess({
+  email,
+  firstName,
+  surname,
+  requestedRole,
+  motivation,
+}) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   await rpc("request_staff_access", {
     p_email: email.trim(),
     p_first_name: firstName.trim(),
@@ -106,6 +176,7 @@ export async function requestStaffAccess({ email, firstName, surname, requestedR
   return true;
 }
 
+<<<<<<< HEAD
 /** Where is my staff request? (status check on the staff sign-up page) */
 export async function fetchMyStaffRequestStatus() {
   try {
@@ -113,4 +184,9 @@ export async function fetchMyStaffRequestStatus() {
   } catch {
     return null;
   }
+=======
+/** Where is my staff request? (status check used by the sign-in gate) */
+export async function fetchMyStaffRequestStatus() {
+  return rpc("my_staff_request_status", {});
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 }

@@ -4,24 +4,37 @@ import { useAuth } from "../../../context/auth";
 import {
   fetchMyTickets,
   createTicket,
+<<<<<<< HEAD
   fetchTicketMessages,
   sendCommuterMessage,
   fetchAgentsOnline,
 } from "../../../api/operations";
 import { supabase } from "../../../lib/supabaseClient";
+=======
+  fetchAgentsOnline,
+} from "../../../api/operations";
+import useTicketChat from "../../../hooks/useTicketChat";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
 /**
  * Support (D4, mocks M3 + M9) — real tickets over support_tickets /
  * ticket_messages. The commuter picks a ticket (or opens one), the
  * thread loads via RLS (they only ever see their own), and agent replies
+<<<<<<< HEAD
  * arrive live through the 0009 realtime channel. "Agents online" comes
+=======
+ * arrive live, message by message, via the 0011 realtime channel. "Agents online" comes
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
  * from the agents_online() RPC — no more fake green dot.
  */
 export default function SupportScreen() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [activeTicket, setActiveTicket] = useState(null);
+<<<<<<< HEAD
   const [messages, setMessages] = useState([]);
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const [draft, setDraft] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [opening, setOpening] = useState(false);
@@ -30,6 +43,15 @@ export default function SupportScreen() {
   const [error, setError] = useState("");
   const bottomRef = useRef(null);
 
+<<<<<<< HEAD
+=======
+  // Chat engine: fetch + realtime message-by-message + optimistic send.
+  const { messages, send: sendChat } = useTicketChat({
+    ticketId: activeTicket,
+    sender: "COMMUTER",
+  });
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const loadTickets = useCallback(async () => {
     try {
       const list = await fetchMyTickets();
@@ -55,6 +77,7 @@ export default function SupportScreen() {
     })();
   }, [user, loadTickets]);
 
+<<<<<<< HEAD
   // Load the thread whenever the active ticket changes.
   useEffect(() => {
     if (!activeTicket) return;
@@ -93,6 +116,8 @@ export default function SupportScreen() {
     return () => supabase.removeChannel(channel);
   }, [activeTicket]);
 
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -102,6 +127,7 @@ export default function SupportScreen() {
     const text = draft.trim();
     if (!text || !activeTicket) return;
     setDraft("");
+<<<<<<< HEAD
     try {
       await sendCommuterMessage(activeTicket, text);
       const row = await supabase
@@ -126,6 +152,10 @@ export default function SupportScreen() {
     } catch (err) {
       setError(err?.message || "Could not send the message");
     }
+=======
+    const ok = await sendChat(text);
+    if (!ok) setDraft(text); // restore draft on failure
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   }
 
   async function handleOpenTicket(e) {
@@ -139,7 +169,10 @@ export default function SupportScreen() {
       const list = await loadTickets();
       setActiveTicket(id);
       setNewSubject("");
+<<<<<<< HEAD
       setMessages([]);
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       void list;
     } catch (err) {
       setError(err?.message || "Could not open the ticket");
@@ -151,6 +184,7 @@ export default function SupportScreen() {
   const active = tickets.find((t) => t.id === activeTicket);
 
   return (
+<<<<<<< HEAD
     <div className="flex flex-col min-h-full">
       <div className="px-5 pb-3 flex items-start justify-between">
         <div>
@@ -158,12 +192,35 @@ export default function SupportScreen() {
           <p className="flex items-center gap-1.5 text-[12px] text-slate-500 mt-1">
             <span className={`h-1.5 w-1.5 rounded-full ${agents.online ? "bg-emerald-500" : "bg-slate-400"}`} />
             {agents.online ? `${agents.count} agent${agents.count === 1 ? "" : "s"} online` : "Agents offline — we'll reply soon"}
+=======
+    <div className="flex flex-col flex-1 min-h-full">
+      <div className="px-5 pb-3 flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink-900">
+            Support
+          </h1>
+          <p className="flex items-center gap-1.5 text-[12px] text-slate-500 mt-1">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${agents.online ? "bg-emerald-500" : "bg-slate-400"}`}
+            />
+            {agents.online
+              ? `${agents.count} agent${agents.count === 1 ? "" : "s"} online`
+              : "Agents offline — we'll reply soon"}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           </p>
         </div>
         <button
           type="button"
           className="h-11 w-11 rounded-xl flex items-center justify-center"
+<<<<<<< HEAD
           style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}
+=======
+          style={{
+            background: "linear-gradient(135deg, #ffd873, #f0b429)",
+            boxShadow: "var(--shadow-glow-gold)",
+            color: "var(--color-ink-900)",
+          }}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           aria-label="Call support"
         >
           <PhoneIcon />
@@ -183,18 +240,37 @@ export default function SupportScreen() {
                 : "bg-white border-ink-900/10 text-slate-500 hover:border-gold-500/40"
             }`}
           >
+<<<<<<< HEAD
             #{t.id} · {t.status === "RESOLVED" ? "✓ " : ""}{t.subject.slice(0, 22)}{t.subject.length > 22 ? "…" : ""}
           </button>
         ))}
         {!loading && tickets.length === 0 && (
           <p className="text-[12px] text-slate-500">No tickets yet — open one below.</p>
+=======
+            #{t.id} · {t.status === "RESOLVED" ? "✓ " : ""}
+            {t.subject.slice(0, 22)}
+            {t.subject.length > 22 ? "…" : ""}
+          </button>
+        ))}
+        {!loading && tickets.length === 0 && (
+          <p className="text-[12px] text-slate-500">
+            No tickets yet — open one below.
+          </p>
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         )}
       </div>
 
       {/* Thread */}
       <div className="flex-1 flex flex-col gap-3 px-5 pb-4">
         {error && (
+<<<<<<< HEAD
           <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] font-medium text-red-600">
+=======
+          <p
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] font-medium text-red-600"
+          >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             {error}
           </p>
         )}
@@ -212,16 +288,36 @@ export default function SupportScreen() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
             className={`flex flex-col max-w-[80%] ${
+<<<<<<< HEAD
               m.from === "user" ? "self-end items-end" : "self-start items-start"
+=======
+              m.from === "user"
+                ? "self-end items-end"
+                : "self-start items-start"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             }`}
           >
             <div
               className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${
+<<<<<<< HEAD
                 m.from === "user" ? "text-ink-900 rounded-br-md" : "bg-cream-200 text-ink-900 rounded-bl-md"
               }`}
               style={
                 m.from === "user"
                   ? { background: "linear-gradient(135deg, #ffd873 0%, #ffc52e 55%, #f0b429 100%)", boxShadow: "var(--shadow-glow-gold)" }
+=======
+                m.from === "user"
+                  ? "text-ink-900 rounded-br-md"
+                  : "bg-cream-200 text-ink-900 rounded-bl-md"
+              }`}
+              style={
+                m.from === "user"
+                  ? {
+                      background:
+                        "linear-gradient(135deg, #ffd873 0%, #ffc52e 55%, #f0b429 100%)",
+                      boxShadow: "var(--shadow-glow-gold)",
+                    }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
                   : undefined
               }
             >
@@ -250,14 +346,29 @@ export default function SupportScreen() {
             type="submit"
             whileTap={{ scale: 0.92 }}
             className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
+<<<<<<< HEAD
             style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}
+=======
+            style={{
+              background: "linear-gradient(135deg, #ffd873, #f0b429)",
+              boxShadow: "var(--shadow-glow-gold)",
+              color: "var(--color-ink-900)",
+            }}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             aria-label="Send message"
           >
             <SendIcon />
           </motion.button>
         </form>
       ) : (
+<<<<<<< HEAD
         <form onSubmit={handleOpenTicket} className="sticky bottom-0 mt-auto glass px-5 py-3 border-t border-ink-900/5">
+=======
+        <form
+          onSubmit={handleOpenTicket}
+          className="sticky bottom-0 mt-auto glass px-5 py-3 border-t border-ink-900/5"
+        >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -271,7 +382,15 @@ export default function SupportScreen() {
               whileTap={{ scale: 0.92 }}
               disabled={opening || !newSubject.trim()}
               className="h-11 w-11 rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"
+<<<<<<< HEAD
               style={{ background: "linear-gradient(135deg, #ffd873, #f0b429)", boxShadow: "var(--shadow-glow-gold)", color: "var(--color-ink-900)" }}
+=======
+              style={{
+                background: "linear-gradient(135deg, #ffd873, #f0b429)",
+                boxShadow: "var(--shadow-glow-gold)",
+                color: "var(--color-ink-900)",
+              }}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               aria-label="Open ticket"
             >
               <PlusIcon />
@@ -285,7 +404,18 @@ export default function SupportScreen() {
 
 function PhoneIcon() {
   return (
+<<<<<<< HEAD
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+=======
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       <path
         d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"
         strokeLinecap="round"
@@ -297,16 +427,44 @@ function PhoneIcon() {
 
 function SendIcon() {
   return (
+<<<<<<< HEAD
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
+=======
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M22 2l-7 20-4-9-9-4 20-7z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     </svg>
   );
 }
 
 function PlusIcon() {
   return (
+<<<<<<< HEAD
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+=======
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );

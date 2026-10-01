@@ -1,13 +1,48 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+<<<<<<< HEAD
 import { detectCardBrand } from "../data/loadTripsData";
 
 export default function AddCardDrawer({ open, onClose, onSave }) {
+=======
+import { luhnValid } from "../../../../utils/saId";
+
+function formatCardNumber(value) {
+  const d = value.replace(/\D/g, "").slice(0, 16);
+  return d.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatExpiry(value) {
+  const d = value.replace(/\D/g, "").slice(0, 4);
+  if (d.length <= 2) return d;
+  return `${d.slice(0, 2)}/${d.slice(2)}`;
+}
+
+/** True when MM/YY is this month or later. */
+function expiryInFuture(month, yearRaw) {
+  const m = parseInt(month, 10);
+  let y = parseInt(yearRaw, 10);
+  if (yearRaw.length === 2) y += 2000;
+  const now = new Date();
+  const thisYear = now.getFullYear();
+  const thisMonth = now.getMonth() + 1;
+  return y > thisYear || (y === thisYear && m >= thisMonth);
+}
+
+export default function AddCardDrawer({
+  open,
+  onClose,
+  onSave,
+  error = "",
+  saving = false,
+}) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const [holder, setHolder] = useState("");
   const [number, setNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
 
+<<<<<<< HEAD
   const brand = detectCardBrand(number);
   const canSave =
     holder.trim() &&
@@ -19,6 +54,38 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
     const digits = value.replace(/\D/g, "").slice(0, 16);
     return digits.replace(/(.{4})/g, "$1 ").trim();
   }
+=======
+  const digits = number.replace(/\D/g, "");
+  const [expMonth = "", expYear = ""] = (expiry || "")
+    .split("/")
+    .map((s) => s.trim());
+
+  const numberComplete = digits.length >= 13;
+  const numberOk = numberComplete && luhnValid(digits);
+  const expiryShapeOk =
+    /^(0?[1-9]|1[0-2])$/.test(expMonth) && /^\d{2}$/.test(expYear);
+  const expiryOk = expiryShapeOk && expiryInFuture(expMonth, expYear);
+
+  const canSave = Boolean(
+    holder.trim() && numberOk && expiryOk && cvv.length >= 3,
+  );
+
+  const numberHint =
+    numberComplete && !numberOk
+      ? "Check the card number — it doesn't look valid."
+      : "";
+  const expiryHint = expiryShapeOk && !expiryOk ? "This card has expired." : "";
+
+  // Start each opening with a clean form. (Not cleared on save, so a
+  // failed save keeps everything the user typed.)
+  useEffect(() => {
+    if (!open) return;
+    setHolder("");
+    setNumber("");
+    setExpiry("");
+    setCvv("");
+  }, [open]);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
   // Close on Escape, the way a native sheet would.
   useEffect(() => {
@@ -32,6 +99,7 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
 
   function handleSave(e) {
     e.preventDefault();
+<<<<<<< HEAD
     if (!canSave) return;
     onSave({
       id: `card-${Date.now()}`,
@@ -43,6 +111,17 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
     setNumber("");
     setExpiry("");
     setCvv("");
+=======
+    if (!canSave || saving) return;
+    // PCI: only safe tokenized fields leave this component — the full PAN
+    // and CVV are discarded here; the DB stores brand + last4 + expiry.
+    onSave({
+      holderName: holder.trim(),
+      number: digits,
+      expMonth: parseInt(expMonth, 10),
+      expYear: 2000 + parseInt(expYear, 10),
+    });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   }
 
   return (
@@ -57,6 +136,12 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
             className="absolute inset-0 bg-ink-900/40"
           />
           <motion.div
+<<<<<<< HEAD
+=======
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-card-title"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -65,6 +150,7 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
           >
             <div className="h-1.5 w-10 rounded-full bg-ink-900/15 mx-auto mb-5" />
 
+<<<<<<< HEAD
             <h2 className="font-display text-xl font-bold text-ink-900">
               Add New Card
             </h2>
@@ -72,6 +158,27 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
               Securely add a payment method to your account.
             </p>
 
+=======
+            <h2
+              id="add-card-title"
+              className="font-display text-xl font-bold text-ink-900"
+            >
+              Add New Card
+            </h2>
+            <p className="text-slate-500 text-[13px] mt-1">
+              Add a payment method to your account.
+            </p>
+
+            {error && (
+              <div
+                role="alert"
+                className="mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-[13px] text-red-700"
+              >
+                {error}
+              </div>
+            )}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             {/* Live card preview */}
             <div className="mt-5 rounded-2xl bg-gradient-to-br from-navy-900 to-navy-950 px-5 py-5 text-cream-50 relative overflow-hidden">
               <div className="h-6 w-9 rounded bg-gold-400/80" />
@@ -104,6 +211,10 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
                 placeholder="Johnathan Doe"
                 value={holder}
                 onChange={setHolder}
+<<<<<<< HEAD
+=======
+                autoComplete="cc-name"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               />
               <Field
                 label="Card Number"
@@ -111,6 +222,11 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
                 value={formatCardNumber(number)}
                 onChange={(v) => setNumber(v.replace(/\D/g, "").slice(0, 16))}
                 inputMode="numeric"
+<<<<<<< HEAD
+=======
+                autoComplete="cc-number"
+                hint={numberHint}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               />
               <div className="grid grid-cols-2 gap-4">
                 <Field
@@ -119,28 +235,50 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
                   value={expiry}
                   onChange={(v) => setExpiry(formatExpiry(v))}
                   inputMode="numeric"
+<<<<<<< HEAD
+=======
+                  autoComplete="cc-exp"
+                  hint={expiryHint}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
                 />
                 <Field
                   label="CVV"
                   placeholder="•••"
                   value={cvv}
+<<<<<<< HEAD
                   onChange={(v) => setCvv(v.replace(/\D/g, "").slice(0, 3))}
                   inputMode="numeric"
+=======
+                  onChange={(v) => setCvv(v.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  autoComplete="cc-csc"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
                   type="password"
                 />
               </div>
 
               <p className="flex items-center gap-1.5 text-[11px] text-slate-500 justify-center mt-1">
+<<<<<<< HEAD
                 <LockIcon /> Secured with 256-bit SSL encryption
+=======
+                <LockIcon /> Only the brand and last 4 digits are stored
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               </p>
 
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 type="submit"
+<<<<<<< HEAD
                 disabled={!canSave}
                 className="mt-1 btn-gold w-full py-4 text-[15px] disabled:opacity-40"
               >
                 Save Card
+=======
+                disabled={!canSave || saving}
+                className="mt-1 btn-gold w-full py-4 text-[15px] disabled:opacity-40"
+              >
+                {saving ? "Saving…" : "Save Card"}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               </motion.button>
             </form>
           </motion.div>
@@ -150,18 +288,26 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
   );
 }
 
+<<<<<<< HEAD
 function formatExpiry(value) {
   const digits = value.replace(/\D/g, "").slice(0, 4);
   if (digits.length <= 2) return digits;
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 function Field({
   label,
   placeholder,
   value,
   onChange,
   inputMode,
+<<<<<<< HEAD
+=======
+  autoComplete,
+  hint,
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   type = "text",
 }) {
   return (
@@ -170,11 +316,24 @@ function Field({
       <input
         type={type}
         inputMode={inputMode}
+<<<<<<< HEAD
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full field-shell py-3.5 text-[15px] text-ink-900 placeholder:text-slate-400 outline-none w-full"
       />
+=======
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={hint ? true : undefined}
+        className={`w-full field-shell py-3.5 text-[15px] text-ink-900 placeholder:text-slate-400 outline-none ${
+          hint ? "!border-red-400" : ""
+        }`}
+      />
+      {hint && <span className="text-[11px] text-red-600">{hint}</span>}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     </label>
   );
 }
@@ -187,6 +346,10 @@ function LockIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
+<<<<<<< HEAD
+=======
+      aria-hidden="true"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     >
       <rect x="4" y="10" width="16" height="10" rx="2" />
       <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />

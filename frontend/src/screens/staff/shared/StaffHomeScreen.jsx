@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "../../../context/auth";
 import { tabsForRole, Icons } from "../../../config/navigation";
 import {
+<<<<<<< HEAD
   fetchTicketQueue,
   fetchAgentsOnline,
   fetchMyRuns,
@@ -13,6 +14,16 @@ import {
   fetchStaffTeam,
 } from "../../../api/operations";
 import { fetchStaffRequests } from "../../../api/staff";
+=======
+  fetchMyRuns,
+  fetchTicketQueue,
+  fetchAgentsOnline,
+  fetchRecentInspections,
+} from "../../../api/operations";
+import { fetchStaffRequests } from "../../../api/staff";
+import { fetchLiveAlerts } from "../../../api/goldenway";
+import ClerkHomeScreen from "../clerk/ClerkHomeScreen";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
 /**
  * Staff dashboard landing — mobile dashboard principles applied:
@@ -28,7 +39,10 @@ import { fetchStaffRequests } from "../../../api/staff";
  */
 const ROLE_BLURB = {
   ADMIN: "Runs the network: people, prices, timetables and alerts.",
+<<<<<<< HEAD
   CLERK: "The kiosk counter: cards, cash loads and concession checks.",
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   INSPECTOR: "Revenue protection: verify cards on board (BR-08).",
   DRIVER: "The road: run your route and keep commuters informed.",
   AGENT: "The voice: help commuters get where they're going.",
@@ -37,6 +51,12 @@ const ROLE_BLURB = {
 export default function StaffHomeScreen() {
   const { user } = useAuth();
   const role = user?.role || "STAFF";
+<<<<<<< HEAD
+=======
+
+  if (role === "CLERK") return <ClerkHomeScreen />;
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const tabs = tabsForRole(role).filter((t) => t.to !== "/staff");
 
   return (
@@ -71,11 +91,18 @@ export default function StaffHomeScreen() {
               <h2 className="font-display text-[15px] font-semibold text-ink-900">
                 {t.label}
               </h2>
+<<<<<<< HEAD
               <p className="text-[11px] font-bold tracking-[0.14em] text-gold-700 mt-2">OPEN →</p>
+=======
+              <p className="text-[11px] font-bold tracking-[0.14em] text-gold-700 mt-2">
+                OPEN →
+              </p>
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             </Link>
           );
         })}
       </motion.div>
+<<<<<<< HEAD
 
       <p className="mt-8 text-[12px] text-ink-900/50">
         Commuter app?{" "}
@@ -83,6 +110,8 @@ export default function StaffHomeScreen() {
           Open GoldenWay
         </Link>
       </p>
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     </div>
   );
 }
@@ -99,8 +128,11 @@ function HeroKpi({ role }) {
       return <DriverHero />;
     case "INSPECTOR":
       return <InspectorHero />;
+<<<<<<< HEAD
     case "CLERK":
       return <ClerkHero />;
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     case "ADMIN":
       return <AdminHero />;
     default:
@@ -116,15 +148,33 @@ function HeroCard({ chip, value, label, sub, to, tone = "gold" }) {
         ? "from-brand-500/15 to-brand-500/5 border-brand-500/30"
         : "from-gold-400/20 to-gold-400/5 border-gold-400/40";
   const inner = (
+<<<<<<< HEAD
     <div className={`min-h-[104px] rounded-3xl border bg-gradient-to-br p-5 ${toneBg}`} style={{ boxShadow: "var(--shadow-card)" }}>
       <p className="eyebrow text-ink-900/45">{chip}</p>
       <p className="font-display text-[40px] leading-none font-bold text-ink-900 mt-2">{value}</p>
+=======
+    <div
+      className={`min-h-[104px] rounded-3xl border bg-gradient-to-br p-5 ${toneBg}`}
+      style={{ boxShadow: "var(--shadow-card)" }}
+    >
+      <p className="eyebrow text-ink-900/45">{chip}</p>
+      <p className="font-display text-[40px] leading-none font-bold text-ink-900 mt-2">
+        {value}
+      </p>
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       <p className="text-[12.5px] text-ink-900/55 mt-1.5">{label}</p>
       {sub && <p className="text-[11px] text-ink-900/40 mt-0.5">{sub}</p>}
     </div>
   );
   return to ? (
+<<<<<<< HEAD
     <Link to={to} className="block mt-5 active:scale-[0.99] transition-transform">
+=======
+    <Link
+      to={to}
+      className="block mt-5 active:scale-[0.99] transition-transform"
+    >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       {inner}
     </Link>
   ) : (
@@ -136,6 +186,7 @@ function HeroCard({ chip, value, label, sub, to, tone = "gold" }) {
 function MetricChipRow({ items }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2.5">
+<<<<<<< HEAD
       {items
         .filter(Boolean)
         .map(({ label, value, to, loading }) => (
@@ -150,6 +201,22 @@ function MetricChipRow({ items }) {
             <p className="text-[9.5px] font-bold tracking-[0.12em] text-ink-900/40 mt-1.5">{label}</p>
           </Link>
         ))}
+=======
+      {items.filter(Boolean).map(({ label, value, to, loading }) => (
+        <Link
+          key={label}
+          to={to}
+          className="min-h-[64px] rounded-2xl border border-ink-900/10 bg-white px-4 py-3 flex flex-col justify-center active:scale-[0.98] transition-transform hover:border-gold-400/60"
+        >
+          <p className="font-display text-[18px] font-bold text-ink-900 leading-none">
+            {loading ? "…" : value}
+          </p>
+          <p className="text-[9.5px] font-bold tracking-[0.12em] text-ink-900/40 mt-1.5">
+            {label}
+          </p>
+        </Link>
+      ))}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     </div>
   );
 }
@@ -159,6 +226,7 @@ function AgentHero() {
   const [state, setState] = useState({ queue: null, online: null });
   useEffect(() => {
     let live = true;
+<<<<<<< HEAD
     Promise.allSettled([fetchTicketQueue(), fetchAgentsOnline()]).then(([q, a]) => {
       if (!live) return;
       const open = q.status === "fulfilled" ? (q.value || []).filter((t) => t.status !== "RESOLVED") : [];
@@ -167,6 +235,21 @@ function AgentHero() {
         online: a.status === "fulfilled" ? a.value?.count ?? 0 : 0,
       });
     });
+=======
+    Promise.allSettled([fetchTicketQueue(), fetchAgentsOnline()]).then(
+      ([q, a]) => {
+        if (!live) return;
+        const open =
+          q.status === "fulfilled"
+            ? (q.value || []).filter((t) => t.status !== "RESOLVED")
+            : [];
+        setState({
+          queue: q.status === "fulfilled" ? open : [],
+          online: a.status === "fulfilled" ? (a.value?.count ?? 0) : 0,
+        });
+      },
+    );
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     return () => {
       live = false;
     };
@@ -179,15 +262,40 @@ function AgentHero() {
       <HeroCard
         chip="OPEN TICKETS"
         value={openCount ?? "…"}
+<<<<<<< HEAD
         label={openCount === 0 ? "Queue clear — nice work" : oldest ? `Next up: “${oldest.subject}”` : "Loading queue"}
+=======
+        label={
+          openCount === 0
+            ? "Queue clear — nice work"
+            : oldest
+              ? `Next up: “${oldest.subject}”`
+              : "Loading queue"
+        }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         sub={openCount > 0 ? "Tap to claim the next commuter" : null}
         to="/staff/inbox"
         tone={openCount > 3 ? "red" : openCount === 0 ? "emerald" : "gold"}
       />
       <MetricChipRow
         items={[
+<<<<<<< HEAD
           { label: "AGENTS ONLINE", value: state.online ?? "…", to: "/staff/inbox" },
           { label: "IN PROGRESS", value: state.queue?.filter((t) => t.status === "IN_PROGRESS").length ?? "…", to: "/staff/inbox" },
+=======
+          {
+            label: "AGENTS ONLINE",
+            value: state.online ?? "…",
+            to: "/staff/inbox",
+          },
+          {
+            label: "IN PROGRESS",
+            value:
+              state.queue?.filter((t) => t.status === "IN_PROGRESS").length ??
+              "…",
+            to: "/staff/inbox",
+          },
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         ]}
       />
     </>
@@ -199,14 +307,26 @@ function DriverHero() {
   const [runs, setRuns] = useState(null);
   useEffect(() => {
     let live = true;
+<<<<<<< HEAD
     fetchMyRuns().then((r) => live && setRuns(r)).catch(() => live && setRuns([]));
+=======
+    fetchMyRuns()
+      .then((r) => live && setRuns(r))
+      .catch(() => live && setRuns([]));
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     return () => {
       live = false;
     };
   }, []);
 
   const open = runs?.find((r) => r.status !== "COMPLETED");
+<<<<<<< HEAD
   const todayCount = runs?.filter((r) => r.serviceDay === new Date().toISOString().slice(0, 10)).length;
+=======
+  const todayCount = runs?.filter(
+    (r) => r.serviceDay === new Date().toISOString().slice(0, 10),
+  ).length;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return (
     <>
       <HeroCard
@@ -224,7 +344,15 @@ function DriverHero() {
       <MetricChipRow
         items={[
           { label: "RUNS TODAY", value: todayCount ?? "…", to: "/staff/runs" },
+<<<<<<< HEAD
           { label: "RECENT RUNS", value: runs?.length ?? "…", to: "/staff/runs" },
+=======
+          {
+            label: "RECENT RUNS",
+            value: runs?.length ?? "…",
+            to: "/staff/runs",
+          },
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         ]}
       />
     </>
@@ -245,28 +373,61 @@ function InspectorHero() {
   }, []);
 
   const today = new Date().toDateString();
+<<<<<<< HEAD
   const todayRows = inspections?.filter((r) => new Date(r.at).toDateString() === today) || [];
   const invalid = todayRows.filter((r) => (r.outcome || "").toUpperCase() !== "VALID").length;
+=======
+  const todayRows =
+    inspections?.filter((r) => new Date(r.at).toDateString() === today) || [];
+  const invalid = todayRows.filter(
+    (r) => (r.outcome || "").toUpperCase() !== "VALID",
+  ).length;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return (
     <>
       <HeroCard
         chip="INSPECTIONS TODAY"
         value={inspections ? todayRows.length : "…"}
+<<<<<<< HEAD
         label={invalid > 0 ? `${invalid} flagged card${invalid === 1 ? "" : "s"} on board` : "All cards checked were valid"}
+=======
+        label={
+          invalid > 0
+            ? `${invalid} flagged card${invalid === 1 ? "" : "s"} on board`
+            : "All cards checked were valid"
+        }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         sub="Tap to verify a card"
         to="/staff/verify"
         tone={invalid > 0 ? "red" : "emerald"}
       />
       <MetricChipRow
         items={[
+<<<<<<< HEAD
           { label: "RECENT LOOKUPS", value: inspections?.length ?? "…", to: "/staff/verify" },
           { label: "FLAGGED (ALL)", value: inspections?.filter((r) => (r.outcome || "").toUpperCase() !== "VALID").length ?? "…", to: "/staff/verify" },
+=======
+          {
+            label: "RECENT LOOKUPS",
+            value: inspections?.length ?? "…",
+            to: "/staff/inspections",
+          },
+          {
+            label: "FLAGGED (ALL)",
+            value:
+              inspections?.filter(
+                (r) => (r.outcome || "").toUpperCase() !== "VALID",
+              ).length ?? "…",
+            to: "/staff/inspections",
+          },
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         ]}
       />
     </>
   );
 }
 
+<<<<<<< HEAD
 /* --- CLERK: today's cash is the hero (K1) --- */
 function ClerkHero() {
   const [sales, setSales] = useState(null);
@@ -319,6 +480,44 @@ function AdminHero() {
           tickets: q.status === "fulfilled" ? open : [],
         });
       });
+=======
+/* --- CLERK: today's cash is the hero (K1) — implemented in
+      screens/staff/clerk/ClerkHomeScreen.jsx (KioskHome); removed the
+      duplicate here which referenced unimported APIs. --- */
+
+/* --- ADMIN: pending onboarding is the hero; network strip secondary --- */
+function AdminHero() {
+  const [state, setState] = useState({
+    pending: null,
+    tickets: null,
+    alerts: null,
+  });
+  useEffect(() => {
+    let live = true;
+    // fetchLiveAlerts() reads the same service_alerts rows the DRIVER
+    // lane's DELAYED/BREAKDOWN reports create (see AlertsScreen.jsx for
+    // the full admin-side view + withdraw action).
+    Promise.allSettled([
+      fetchStaffRequests(),
+      fetchTicketQueue(),
+      fetchLiveAlerts(),
+    ]).then(([r, q, al]) => {
+      if (!live) return;
+      const pending =
+        r.status === "fulfilled"
+          ? (r.value || []).filter((x) => x.status === "PENDING")
+          : [];
+      const open =
+        q.status === "fulfilled"
+          ? (q.value || []).filter((x) => x.status !== "RESOLVED")
+          : [];
+      setState({
+        pending: r.status === "fulfilled" ? pending : [],
+        tickets: q.status === "fulfilled" ? open : [],
+        alerts: al.status === "fulfilled" ? al.value : [],
+      });
+    });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     return () => {
       live = false;
     };
@@ -329,17 +528,42 @@ function AdminHero() {
       <HeroCard
         chip="PENDING ONBOARDING"
         value={state.pending?.length ?? "…"}
+<<<<<<< HEAD
         label={state.pending?.length ? "Access requests waiting on you" : "No access requests waiting"}
+=======
+        label={
+          state.pending?.length
+            ? "Access requests waiting on you"
+            : "No access requests waiting"
+        }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         sub="Tap to review requests"
         to="/staff/onboarding"
         tone={(state.pending?.length || 0) > 0 ? "gold" : "emerald"}
       />
       <MetricChipRow
         items={[
+<<<<<<< HEAD
           { label: "OPEN TICKETS", value: state.tickets?.length ?? "…", to: "/staff/inbox" },
           { label: "STAFF ACCOUNTS", value: state.team?.length ?? "…", to: "/staff/team" },
+=======
+          {
+            label: "OPEN TICKETS",
+            value: state.tickets?.length ?? "…",
+            to: "/staff/inbox",
+          },
+          {
+            label: "ACTIVE ALERTS",
+            value: state.alerts?.length ?? "…",
+            to: "/staff/alerts",
+          },
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         ]}
       />
     </>
   );
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc

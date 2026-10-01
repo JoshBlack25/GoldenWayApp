@@ -1,15 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+<<<<<<< HEAD
 import { fetchStaffRequests, decideStaffAccess, inviteStaffMember } from "../../../api/staff";
+=======
+import {
+  fetchStaffRequests,
+  decideStaffAccess,
+  inviteStaffMember,
+  sendStaffInvite,
+} from "../../../api/staff";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 import { ApiError } from "../../../api/client";
 
 /**
  * ADMIN — Onboarding queue (FINAL-DEV-PLAN §5 D2, QuesAndSuggest point 2).
+<<<<<<< HEAD
  * Lists staff_access_requests; Approve marks the email as the approved
  * role (the person finishes by signing up with that email — the 0005
  * signup trigger attaches their staff row); Deny records the reason.
  * Also hosts the direct-invite door (create_staff_member) so the ADMIN
  * never has to fall back to raw SQL.
+=======
+ * Lists staff_access_requests. Approval creates the applicant's staff row
+ * via the 0012 trigger (they signed up already, so their account goes
+ * live immediately); Deny records the reason and removes the applicant's
+ * auth account (0012 purge trigger). Also hosts the direct-invite door
+ * (create_staff_member) so the ADMIN never has to fall back to raw SQL.
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
  */
 
 const STATUS_TABS = ["PENDING", "APPROVED", "DENIED", "ALL"];
@@ -38,7 +55,14 @@ export default function OnboardingScreen() {
     try {
       setRequests(await fetchStaffRequests(status));
     } catch (err) {
+<<<<<<< HEAD
       setMessage({ kind: "err", text: err?.message || "Could not load the queue" });
+=======
+      setMessage({
+        kind: "err",
+        text: err?.message || "Could not load the queue",
+      });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     } finally {
       setLoading(false);
     }
@@ -58,17 +82,58 @@ export default function OnboardingScreen() {
         approve,
         approve ? null : denyNote.trim() || null,
       );
+<<<<<<< HEAD
       setMessage(
         approve
           ? { kind: "ok", text: `${updated.email} approved as ${updated.requestedRole}. They can now sign up with that email.` }
           : { kind: "ok", text: `${updated.email} denied.` },
       );
+=======
+      if (approve) {
+        // Fire the invite email. This is a best-effort second step —
+        // the approval itself already succeeded and is recorded; if the
+        // email send fails, the request is still APPROVED, so we show a
+        // warning rather than rolling anything back. An admin can retry
+        // by re-approving via attach_staff_to_existing_account or by
+        // asking the applicant to check spam first.
+        try {
+          await sendStaffInvite({
+            requestId: updated.id,
+            email: updated.email,
+            firstName: updated.firstName,
+            surname: updated.surname,
+            requestedRole: updated.requestedRole,
+          });
+          setMessage({
+            kind: "ok",
+            text: `${updated.email} approved as ${updated.requestedRole} — an invite email has been sent.`,
+          });
+        } catch (inviteErr) {
+          setMessage({
+            kind: "err",
+            text: `${updated.email} was approved, but the invite email failed to send: ${inviteErr?.message || "unknown error"}. You may need to retry manually.`,
+          });
+        }
+      } else {
+        setMessage({
+          kind: "ok",
+          text: `${updated.email} denied — their account has been removed.`,
+        });
+      }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       setDenying(null);
       setDenyNote("");
       if (tab !== "PENDING") load(tab);
       else setRequests((rows) => rows.filter((r) => r.id !== request.id));
     } catch (err) {
+<<<<<<< HEAD
       setMessage({ kind: "err", text: err?.message || "Could not save the decision" });
+=======
+      setMessage({
+        kind: "err",
+        text: err?.message || "Could not save the decision",
+      });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     } finally {
       setBusyId(null);
     }
@@ -79,9 +144,18 @@ export default function OnboardingScreen() {
       <div className="mx-auto max-w-3xl">
         <header className="flex items-start justify-between gap-4">
           <div>
+<<<<<<< HEAD
             <h1 className="font-display text-xl font-bold text-ink-900">Onboarding queue</h1>
             <p className="text-[13px] text-ink-900/50 mt-1">
               Approve or deny staff access requests. Approved emails sign up to activate.
+=======
+            <h1 className="font-display text-xl font-bold text-ink-900">
+              Onboarding queue
+            </h1>
+            <p className="text-[13px] text-ink-900/50 mt-1">
+              Approve or deny staff access requests. Approval activates the
+              account the applicant created at sign-up.
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             </p>
           </div>
           <button
@@ -124,12 +198,26 @@ export default function OnboardingScreen() {
         )}
 
         <div className="mt-4 flex flex-col gap-3">
+<<<<<<< HEAD
           {loading && <p className="text-[13px] text-ink-900/40 py-6 text-center">Loading…</p>}
+=======
+          {loading && (
+            <p className="text-[13px] text-ink-900/40 py-6 text-center">
+              Loading…
+            </p>
+          )}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
           {!loading && requests.length === 0 && (
             <div className="rounded-2xl border border-dashed border-ink-900/10 py-10 text-center">
               <p className="text-[13px] text-ink-900/50">
+<<<<<<< HEAD
                 {tab === "PENDING" ? "The queue is clear. 🎉" : `No ${tab === "ALL" ? "" : tab.toLowerCase()} requests.`}
+=======
+                {tab === "PENDING"
+                  ? "The queue is clear. 🎉"
+                  : `No ${tab === "ALL" ? "" : tab.toLowerCase()} requests.`}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               </p>
             </div>
           )}
@@ -140,6 +228,7 @@ export default function OnboardingScreen() {
                 key={r.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+<<<<<<< HEAD
                 transition={{ duration: 0.25 }}                  className="rounded-2xl border border-ink-900/10 bg-white p-5 shadow-[0_14px_30px_-18px_rgba(0,0,0,0.6)]"
               >
                   <div className="flex items-start justify-between gap-3">
@@ -195,6 +284,69 @@ export default function OnboardingScreen() {
                       {r.decisionNote ? ` · note: ${r.decisionNote}` : ""}
                     </p>
                   )}
+=======
+                transition={{ duration: 0.25 }}
+                className="rounded-2xl border border-ink-900/10 bg-white p-5 shadow-[0_14px_30px_-18px_rgba(0,0,0,0.6)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="font-display text-[15px] font-semibold truncate">
+                      {r.firstName} {r.surname}
+                    </h2>
+                    <p className="text-[12px] text-ink-900/50 truncate">
+                      {r.email}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wider ${
+                      ROLE_PILL[r.requestedRole] ||
+                      "border-ink-900/15 text-ink-900/55"
+                    }`}
+                  >
+                    {r.requestedRole}
+                  </span>
+                </div>
+
+                {r.motivation && (
+                  <p className="mt-3 text-[12.5px] leading-relaxed text-ink-900/70 italic">
+                    “{r.motivation}”
+                  </p>
+                )}
+
+                <p className="mt-2 text-[11px] text-ink-900/35">
+                  Requested {new Date(r.requestedAt).toLocaleString()}
+                </p>
+
+                {r.status === "PENDING" ? (
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === r.id}
+                      onClick={() => decide(r, true)}
+                      className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-[12px] font-bold text-white hover:bg-emerald-400 transition-all hover:shadow-[0_10px_24px_-10px_rgba(16,185,129,0.5)] disabled:opacity-50 active:scale-[0.98]"
+                    >
+                      {busyId === r.id ? "Saving…" : "Approve"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === r.id}
+                      onClick={() => setDenying(r)}
+                      className="flex-1 rounded-xl border border-ink-900/10 py-2.5 text-[12px] font-semibold text-ink-900/70 hover:text-ink-900 hover:border-ink-900/25 transition-colors disabled:opacity-50"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-[11px] text-ink-900/40">
+                    {r.status}
+                    {r.decidedAt
+                      ? ` · decided ${new Date(r.decidedAt).toLocaleString()}`
+                      : ""}
+                    {r.onboardedAt ? " · account activated ✓" : ""}
+                    {r.decisionNote ? ` · note: ${r.decisionNote}` : ""}
+                  </p>
+                )}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               </motion.article>
             ))}
         </div>
@@ -213,7 +365,10 @@ export default function OnboardingScreen() {
       />
       <InviteModal
         open={inviteOpen}
+<<<<<<< HEAD
         busy={false}
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         onClose={() => setInviteOpen(false)}
         onInvited={(msg) => {
           setInviteOpen(false);
@@ -228,7 +383,15 @@ export default function OnboardingScreen() {
 function DenyModal({ request, note, setNote, busy, onClose, onConfirm }) {
   if (!request) return null;
   return (
+<<<<<<< HEAD
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6" role="dialog" aria-modal="true">
+=======
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
+      role="dialog"
+      aria-modal="true"
+    >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
@@ -269,9 +432,21 @@ function DenyModal({ request, note, setNote, busy, onClose, onConfirm }) {
 
 const ROLES = ["DRIVER", "INSPECTOR", "CLERK", "AGENT", "ADMIN"];
 
+<<<<<<< HEAD
 function InviteModal({ open, busy, onClose, onInvited }) {
   const [form, setForm] = useState({ email: "", firstName: "", surname: "", role: "DRIVER" });
   const [error, setError] = useState("");
+=======
+function InviteModal({ open, onClose, onInvited }) {
+  const [form, setForm] = useState({
+    email: "",
+    firstName: "",
+    surname: "",
+    role: "DRIVER",
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   if (!open) return null;
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -283,28 +458,81 @@ function InviteModal({ open, busy, onClose, onInvited }) {
       setError("Enter a valid email address.");
       return;
     }
+<<<<<<< HEAD
     try {
       const row = await inviteStaffMember(form);
       onInvited(`${row.email} invited as ${row.requestedRole}. They sign up with that email to activate.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not send the invite");
+=======
+    if (!form.firstName.trim() || !form.surname.trim()) {
+      setError("Enter their first name and surname.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const row = await inviteStaffMember(form);
+      try {
+        await sendStaffInvite({
+          requestId: row.id,
+          email: row.email,
+          firstName: row.firstName,
+          surname: row.surname,
+          requestedRole: row.requestedRole,
+        });
+        onInvited(
+          `${row.email} invited as ${row.requestedRole} — an invite email has been sent.`,
+        );
+      } catch (inviteErr) {
+        onInvited(
+          `${row.email} was pre-approved as ${row.requestedRole}, but the invite email failed to send: ${inviteErr?.message || "unknown error"}. You may need to retry manually.`,
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Could not send the invite",
+      );
+    } finally {
+      setBusy(false);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     }
   }
 
   return (
+<<<<<<< HEAD
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6" role="dialog" aria-modal="true">
+=======
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
+      role="dialog"
+      aria-modal="true"
+    >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       <motion.form
         onSubmit={submit}
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm rounded-2xl border border-ink-900/10 bg-white p-6"
       >
+<<<<<<< HEAD
         <h2 className="font-display text-lg font-bold">Invite a staff member</h2>
+=======
+        <h2 className="font-display text-lg font-bold">
+          Invite a staff member
+        </h2>
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         <p className="text-[12px] text-ink-900/50 mt-1">
           Pre-approves their email — they finish by signing up with it.
         </p>
         {error && (
+<<<<<<< HEAD
           <p role="alert" className="mt-3 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-[12px] text-red-300">
+=======
+          <p
+            role="alert"
+            className="mt-3 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-[12px] text-red-300"
+          >
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             {error}
           </p>
         )}
@@ -336,7 +564,13 @@ function InviteModal({ open, busy, onClose, onInvited }) {
             className="w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3 text-[13px] text-ink-900 outline-none focus:border-gold-400/60"
           >
             {ROLES.map((r) => (
+<<<<<<< HEAD
               <option key={r} value={r}>{r}</option>
+=======
+              <option key={r} value={r}>
+                {r}
+              </option>
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             ))}
           </select>
         </div>

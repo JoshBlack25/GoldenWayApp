@@ -23,6 +23,7 @@ function toMinutes(iso) {
   return h * 60 + m;
 }
 
+<<<<<<< HEAD
 function waveLabel(mins) {
   if (mins < 5 * 60) return "Early morning";
   if (mins < 9 * 60) return "Morning peak";
@@ -31,6 +32,8 @@ function waveLabel(mins) {
   return "Evening";
 }
 
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 function countdownLabel(departureMins, nowMins) {
   const diff = departureMins - nowMins;
   if (diff <= 0 && diff > -5) return "Boarding now";
@@ -47,7 +50,11 @@ function routeLabel(r) {
   return r.label || r.name || `${r.origin} → ${r.destination}`;
 }
 
+<<<<<<< HEAD
 export default function TimetableScreen() {
+=======
+export default function TimetableScreen({ hideCta = false }) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const navigate = useNavigate();
   const [routes, setRoutes] = useState([]);
   const [routeCode, setRouteCode] = useState("");
@@ -101,8 +108,11 @@ export default function TimetableScreen() {
     };
   }, [departures]);
 
+<<<<<<< HEAD
   const routeOptions = [...new Set(routes.map((r) => r.label))];
 
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return (
     <div className="flex flex-col gap-5 px-5 pb-6">
       <div className="flex items-center justify-between">
@@ -236,6 +246,7 @@ export default function TimetableScreen() {
             far.
           </p>
 
+<<<<<<< HEAD
           <button
             type="button"
             onClick={() => navigate("/load-trips")}
@@ -243,6 +254,17 @@ export default function TimetableScreen() {
           >
             Load trips for this route →
           </button>
+=======
+          {!hideCta && (
+            <button
+              type="button"
+              onClick={() => navigate("/load-trips")}
+              className="btn-gold w-full py-3.5 text-[14px]"
+            >
+              Load trips for this route →
+            </button>
+          )}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         </>
       )}
     </div>

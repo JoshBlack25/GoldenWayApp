@@ -26,8 +26,18 @@ function toApiError(error, fallbackStatus = 400) {
 
   // Our RPCs raise "field: human message" for validation failures.
   const fieldMatch = /^([a-zA-Z]+):\s*(.+)$/.exec(message);
+<<<<<<< HEAD
   if (code === "23505" || /already exists|already registered|duplicate/i.test(message)) {
     const data = fieldMatch ? { [fieldMatch[1]]: fieldMatch[2] } : { error: message };
+=======
+  if (
+    code === "23505" ||
+    /already exists|already registered|duplicate/i.test(message)
+  ) {
+    const data = fieldMatch
+      ? { [fieldMatch[1]]: fieldMatch[2] }
+      : { error: message };
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     return new ApiError(409, data);
   }
   if (fieldMatch) {
@@ -67,7 +77,13 @@ function mapCommuterRow(row) {
 }
 
 export async function fetchMyCommuterProfile() {
+<<<<<<< HEAD
   const { data: { session } } = await supabase.auth.getSession();
+=======
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   if (!session) return null;
   const { data, error } = await supabase
     .from("commuters")
@@ -79,6 +95,7 @@ export async function fetchMyCommuterProfile() {
 }
 
 export async function registerCommuter(payload) {
+<<<<<<< HEAD
   const { email, password, firstName, surname, phone, gender, dateOfBirth, idNumber, concessionType } = payload;
 
   const { error: signUpError } = await supabase.auth.signUp({ email, password });
@@ -103,13 +120,74 @@ export async function registerCommuter(payload) {
   });
 
   return mapCommuterRow(row);
+=======
+  const {
+    email,
+    password,
+    firstName,
+    surname,
+    phone,
+    dateOfBirth,
+    idNumber,
+    concessionType,
+    existingCardNumber,
+  } = payload;
+
+  // Pre-check the duplicate-ID case before touching auth.users at all.
+  const { data: idAvailable, error: checkErr } = await supabase.rpc(
+    "check_id_number_available",
+    { p_id_number: idNumber },
+  );
+  if (!checkErr && idAvailable === false) {
+    throw new ApiError(409, {
+      idNumber: "An account already exists with this ID number",
+    });
+  }
+
+  const { error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/account-created`,
+      data: {
+        account_type: "COMMUTER",
+        first_name: firstName,
+        surname,
+        phone,
+        date_of_birth: dateOfBirth,
+        id_number: idNumber,
+        concession_type: concessionType,
+        pending_card_number: existingCardNumber || null,
+      },
+    },
+  });
+  if (signUpError) {
+    if (/already registered|already exists/i.test(signUpError.message)) {
+      throw new ApiError(409, {
+        email: "An account already exists with this email",
+      });
+    }
+    const fieldMatch = /^([a-zA-Z]+):\s*(.+)$/.exec(signUpError.message);
+    if (fieldMatch) throw new ApiError(400, { [fieldMatch[1]]: fieldMatch[2] });
+    throw new ApiError(400, { error: signUpError.message });
+  }
+
+  // No session yet — Confirm Email is on. The commuters row is created
+  // server-side by the trigger; nothing to return until they confirm.
+  return null;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 }
 
 export async function loginCommuter(email, password) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw toApiError(error, 401);
   const profile = await fetchMyCommuterProfile();
+<<<<<<< HEAD
   if (!profile) throw new ApiError(401, { error: "No commuter profile for this account" });
+=======
+  if (!profile)
+    throw new ApiError(401, { error: "No commuter profile for this account" });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return profile;
 }
 
@@ -190,7 +268,16 @@ export async function topupsForCard(cardNumber) {
   }));
 }
 
+<<<<<<< HEAD
 export async function createTopupOrder(cardNumber, productCode, routeCode, amountCents) {
+=======
+export async function createTopupOrder(
+  cardNumber,
+  productCode,
+  routeCode,
+  amountCents,
+) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const row = await rpc("create_topup_order", {
     p_card_number: cardNumber,
     p_product_code: productCode,
@@ -200,8 +287,16 @@ export async function createTopupOrder(cardNumber, productCode, routeCode, amoun
   return { id: row.id, status: row.status };
 }
 
+<<<<<<< HEAD
 export async function payTopupOrder(orderId) {
   const row = await rpc("pay_topup_order", { p_order_id: orderId });
+=======
+export async function payTopupOrder(orderId, paymentMethodId = null) {
+  const row = await rpc("pay_topup_order", {
+    p_order_id: orderId,
+    p_payment_method_id: paymentMethodId,
+  });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return {
     id: row.id,
     productCode: row.product_code,
@@ -235,7 +330,13 @@ export async function fetchRoutesFromDb() {
 }
 
 export async function fetchProductsForRouteFromDb(routeCode) {
+<<<<<<< HEAD
   const { data, error } = await supabase.rpc("fares_products_for_route", { p_route_code: routeCode });
+=======
+  const { data, error } = await supabase.rpc("fares_products_for_route", {
+    p_route_code: routeCode,
+  });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   if (error) throw toApiError(error);
   return (data || []).map((p) => ({
     code: p.code,
@@ -274,7 +375,15 @@ export async function fetchQuoteFromDb(routeCode, productCode, concessionType) {
  * mapped from the JS date on the caller side. Returns ISO time strings
  * ("05:15:00") sorted ascending within the requested direction.
  */
+<<<<<<< HEAD
 export async function fetchDepartures(routeCode, direction = "OUTBOUND", dayType = "WEEKDAY") {
+=======
+export async function fetchDepartures(
+  routeCode,
+  direction = "OUTBOUND",
+  dayType = "WEEKDAY",
+) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const { data, error } = await supabase
     .from("route_departures")
     .select("departure_time")
@@ -303,6 +412,58 @@ export function hhmm(iso) {
 // service alerts (Home screen banner)
 // ---------------------------------------------------------------------
 
+<<<<<<< HEAD
+=======
+/** Stops master list (public read; RLS stops_read). */
+export async function fetchStops() {
+  const { data, error } = await supabase
+    .from("stops")
+    .select("id,name,zone,latitude,longitude")
+    .order("name");
+  if (error) throw toApiError(error);
+  return (data || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    zone: s.zone,
+    latitude: s.latitude,
+    longitude: s.longitude,
+  }));
+}
+
+/**
+ * Update the signed-in commuter's own profile (RLS: commuters_update_self).
+ * Only the fields passed are written; id/email/id_number are immutable.
+ */
+export async function updateMyProfile(patch) {
+  const allowed = [
+    "first_name",
+    "surname",
+    "phone",
+    "date_of_birth",
+    "concession_type",
+  ];
+  const row = {};
+  for (const key of allowed) {
+    if (
+      patch?.[key] !== undefined &&
+      patch?.[key] !== null &&
+      patch[key] !== ""
+    ) {
+      row[key] = patch[key];
+    }
+  }
+  if (Object.keys(row).length === 0) throw new Error("Nothing to update");
+  const { data, error } = await supabase
+    .from("commuters")
+    .update(row)
+    .eq("id", (await supabase.auth.getUser()).data.user.id)
+    .select("*")
+    .single();
+  if (error) throw toApiError(error);
+  return data;
+}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 export async function fetchLiveAlerts() {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
@@ -322,6 +483,7 @@ export async function fetchLiveAlerts() {
     effectiveTo: a.effective_to,
   }));
 }
+<<<<<<< HEAD
 
 // -----------------------------------------------------------------------
 // account management
@@ -353,3 +515,5 @@ export async function deleteMyAccount() {
     throw toApiError(error);
   }
 }
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc

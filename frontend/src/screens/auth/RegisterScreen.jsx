@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 import { useMemo, useState } from "react";
+=======
+import { useEffect, useMemo, useState } from "react";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/auth";
 import { ApiError } from "../../api/client";
+<<<<<<< HEAD
 
 /**
  * RegisterScreen — real POST /auth/register.
@@ -37,6 +42,34 @@ function luhnValid(numStr) {
   return sum % 10 === 0;
 }
 
+=======
+import { supabase } from "../../lib/supabaseClient";
+import {
+  formatIdNumber,
+  luhnValid,
+  idNumberValid,
+  deriveDobFromId,
+} from "../../utils/saId";
+
+/**
+ * RegisterScreen — signup via Supabase Auth (0017: Confirm Email on).
+ * signUp() carries all form data as user_metadata; the commuters row is
+ * created server-side by the on_auth_user_commuter_signup trigger once
+ * the account exists — not by a client RPC call, since no session
+ * exists until the user confirms their email.
+ *
+ * DOB auto-fill: SA IDs encode YYMMDD as the first 6 digits. We derive and
+ * populate Date of Birth from that as the user types the ID, but stop
+ * overwriting it the moment they edit DOB manually.
+ *
+ * Existing Gold Card claim: a commuter who already bought a card at a
+ * clerk kiosk can check "I already have a Gold Card", enter its number,
+ * and confirm it (lookup_card_at_signup, public/no-session RPC) before
+ * submitting. The confirmed card number travels in signup metadata and
+ * is linked to their account on first confirmed login (AuthProvider).
+ */
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 function splitName(fullName) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { firstName: "", surname: "" };
@@ -44,6 +77,15 @@ function splitName(fullName) {
   return { firstName: parts[0], surname: parts.slice(1).join(" ") };
 }
 
+<<<<<<< HEAD
+=======
+function formatCardNumber(raw) {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits ? `GW-${digits}` : "";
+  return `GW-${digits.slice(0, 4)}-${digits.slice(4)}`;
+}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 export default function RegisterScreen() {
   const navigate = useNavigate();
   const { register } = useAuth();
@@ -52,8 +94,13 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [idNumber, setIdNumber] = useState("");
+<<<<<<< HEAD
   const [gender, setGender] = useState("FEMALE");
   const [dateOfBirth, setDateOfBirth] = useState("");
+=======
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [dobSource, setDobSource] = useState("empty"); // "empty" | "auto" | "manual"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const [concessionType, setConcessionType] = useState("NONE");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -63,14 +110,76 @@ export default function RegisterScreen() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
+<<<<<<< HEAD
+=======
+  // --- Existing Gold Card claim (0017) ---
+  const [hasExistingCard, setHasExistingCard] = useState(false);
+  const [cardNumber, setCardNumber] = useState(""); // GW-XXXX-XXXX
+  const [cardLookup, setCardLookup] = useState(null); // lookup_card_at_signup result once confirmed
+  const [cardLookupBusy, setCardLookupBusy] = useState(false);
+  const [cardLookupError, setCardLookupError] = useState("");
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const idDigits = idNumber.replace(/\D/g, "");
   const idError = useMemo(() => {
     if (!idDigits) return "";
     if (idDigits.length !== 13) return "SA ID must be 13 digits";
+<<<<<<< HEAD
     if (!luhnValid(idDigits)) return "This ID number fails the checksum — please check it";
     return "";
   }, [idDigits]);
 
+=======
+    if (!luhnValid(idDigits))
+      return "This ID number fails the checksum — please check it";
+    return "";
+  }, [idDigits]);
+
+  const cardNumberValid = /^GW-\d{4}-\d{4}$/.test(cardNumber);
+
+  // Any edit to the card number after a successful lookup invalidates
+  // the confirmation, so a stale "yes this is mine" can't slip through.
+  useEffect(() => {
+    setCardLookup(null);
+    setCardLookupError("");
+  }, [cardNumber]);
+
+  async function handleCheckCard() {
+    if (!cardNumberValid || idDigits.length !== 13 || cardLookupBusy) return;
+    setCardLookupBusy(true);
+    setCardLookupError("");
+    setCardLookup(null);
+    try {
+      const { data, error: rpcError } = await supabase.rpc(
+        "lookup_card_at_signup",
+        { p_card_number: cardNumber, p_id_number: idDigits },
+      );
+      if (rpcError) throw rpcError;
+      setCardLookup(data);
+    } catch {
+      setCardLookupError(
+        "No unregistered card matches this number and ID. Check the digits and try again.",
+      );
+    } finally {
+      setCardLookupBusy(false);
+    }
+  }
+
+  // Auto-fill DOB from the ID as it's typed, unless the user has manually edited DOB.
+  useEffect(() => {
+    if (dobSource === "manual") return;
+    const derived = deriveDobFromId(idDigits);
+    if (derived) {
+      setDateOfBirth(derived);
+      setDobSource("auto");
+    } else if (dobSource === "auto" && idDigits.length < 6) {
+      setDateOfBirth("");
+      setDobSource("empty");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idDigits]);
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const minDob = useMemo(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - 120);
@@ -96,7 +205,11 @@ export default function RegisterScreen() {
       clientErrors.password = "Password must be at least 8 characters";
     if (password !== confirmPassword)
       clientErrors.confirmPassword = "Passwords do not match";
+<<<<<<< HEAD
     if (idDigits.length !== 13 || !luhnValid(idDigits))
+=======
+    if (!idNumberValid(idDigits))
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       clientErrors.idNumber = "Enter a valid 13-digit SA ID number";
     if (!dateOfBirth) clientErrors.dateOfBirth = "Select your date of birth";
     if (Object.keys(clientErrors).length) {
@@ -104,6 +217,18 @@ export default function RegisterScreen() {
       return;
     }
 
+<<<<<<< HEAD
+=======
+    if (hasExistingCard && !cardLookup) {
+      setError(
+        cardNumberValid
+          ? "Check your card details before continuing."
+          : 'Enter your Gold Card number, then tap "Check card" to confirm it\'s yours.',
+      );
+      return;
+    }
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     setBusy(true);
     try {
       await register({
@@ -112,19 +237,39 @@ export default function RegisterScreen() {
         email: email.trim(),
         phone: phone.trim(),
         password,
+<<<<<<< HEAD
         gender,
         dateOfBirth,
         idNumber: idDigits,
         concessionType,
       });
       navigate("/account-created", { replace: true });
+=======
+        dateOfBirth,
+        idNumber: idDigits,
+        concessionType,
+        existingCardNumber: hasExistingCard ? cardNumber : undefined,
+      });
+      navigate("/check-email", {
+        replace: true,
+        state: { email: email.trim() },
+      });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
           setError(
             "An account already exists with this email or ID number. Try logging in instead.",
           );
+<<<<<<< HEAD
         } else if (err.status === 400 && err.fieldErrors && Object.keys(err.fieldErrors).length) {
+=======
+        } else if (
+          err.status === 400 &&
+          err.fieldErrors &&
+          Object.keys(err.fieldErrors).length
+        ) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           setFieldErrors(err.fieldErrors);
           setError("Please fix the highlighted fields.");
         } else {
@@ -228,6 +373,7 @@ export default function RegisterScreen() {
             error={fieldErrors.idNumber || idError}
           />
 
+<<<<<<< HEAD
           <div className="grid grid-cols-2 gap-3">
             <SelectField
               label="Gender"
@@ -251,15 +397,123 @@ export default function RegisterScreen() {
             />
           </div>
 
+=======
+          {/* --- Existing Gold Card claim --- */}
+          <div className="rounded-xl border border-ink-900/10 bg-white/60 px-4 py-3.5">
+            <label className="flex items-start gap-2.5 select-none">
+              <input
+                type="checkbox"
+                checked={hasExistingCard}
+                onChange={(e) => {
+                  setHasExistingCard(e.target.checked);
+                  if (!e.target.checked) {
+                    setCardNumber("");
+                    setCardLookup(null);
+                    setCardLookupError("");
+                  }
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-ink-900/20 accent-gold-500 shrink-0"
+              />
+              <span className="text-[13px] font-medium text-ink-700 leading-snug">
+                I already have a Gold Card
+                <span className="block text-[11px] font-normal text-slate-500 mt-0.5">
+                  Bought one at a kiosk or from a clerk? Link it to your new
+                  account.
+                </span>
+              </span>
+            </label>
+
+            {hasExistingCard && (
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <div className="field-shell flex-1">
+                    <CardChipIcon />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="GW-1234-5678"
+                      value={cardNumber}
+                      onChange={(e) =>
+                        setCardNumber(formatCardNumber(e.target.value))
+                      }
+                      className="w-full py-3 text-[14px] text-ink-900 placeholder:text-slate-400 bg-transparent outline-none tracking-wide"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCheckCard}
+                    disabled={
+                      !cardNumberValid ||
+                      idDigits.length !== 13 ||
+                      cardLookupBusy
+                    }
+                    className="shrink-0 rounded-xl border border-gold-500/40 bg-gold-50 px-4 text-[13px] font-semibold text-gold-700 disabled:opacity-40 transition-colors"
+                  >
+                    {cardLookupBusy ? "Checking…" : "Check card"}
+                  </button>
+                </div>
+
+                {idDigits.length !== 13 && !idError && (
+                  <p className="text-[11px] text-slate-500">
+                    Enter your SA ID above first — it's needed to verify the
+                    card.
+                  </p>
+                )}
+
+                {cardLookupError && (
+                  <p className="text-[11px] text-red-600">{cardLookupError}</p>
+                )}
+
+                {cardLookup && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                    <p className="text-[12px] font-semibold text-emerald-700">
+                      ✓ Card {cardLookup.cardNumber} found
+                    </p>
+                    <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                      {cardLookup.journeysRemaining ?? 0} journey
+                      {cardLookup.journeysRemaining === 1 ? "" : "s"} remaining
+                      — this will be linked to your new account.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <SelectField
+            label="Concession"
+            value={concessionType}
+            onChange={setConcessionType}
+            options={[
+              { value: "NONE", label: "None" },
+              { value: "STUDENT", label: "Student −15%" },
+              { value: "PENSIONER", label: "Pensioner −20%" },
+            ]}
+          />
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           <Field
             label="Date of Birth"
             type="date"
             value={dateOfBirth}
+<<<<<<< HEAD
             onChange={setDateOfBirth}
+=======
+            onChange={(v) => {
+              setDateOfBirth(v);
+              setDobSource("manual");
+            }}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             min={minDob}
             max={maxDob}
             icon={<CalendarIcon />}
             error={fieldErrors.dateOfBirth}
+<<<<<<< HEAD
+=======
+            hint={
+              dobSource === "auto" ? "Auto-filled from your ID number" : null
+            }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           />
 
           <div className="flex flex-col gap-1.5">
@@ -357,15 +611,23 @@ function Field({
   inputMode,
   min,
   max,
+<<<<<<< HEAD
+=======
+  hint,
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[13px] font-medium text-ink-700">{label}</label>
+<<<<<<< HEAD
       <div
         className={`field-shell ${
           error ? "!border-red-400" : ""
         }`}
       >
+=======
+      <div className={`field-shell ${error ? "!border-red-400" : ""}`}>
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         {icon}
         <input
           type={type}
@@ -379,7 +641,15 @@ function Field({
           className="w-full py-3.5 text-[15px] text-ink-900 placeholder:text-slate-400 bg-transparent outline-none"
         />
       </div>
+<<<<<<< HEAD
       {error && <p className="text-[11px] text-red-600">{error}</p>}
+=======
+      {error ? (
+        <p className="text-[11px] text-red-600">{error}</p>
+      ) : hint ? (
+        <p className="text-[11px] text-gold-600 font-medium">{hint}</p>
+      ) : null}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     </div>
   );
 }
@@ -471,7 +741,29 @@ function IdIcon() {
     >
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <circle cx="9" cy="11" r="2" />
+<<<<<<< HEAD
       <path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14.5 9.5H18M14.5 13H18" strokeLinecap="round" />
+=======
+      <path
+        d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14.5 9.5H18M14.5 13H18"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CardChipIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-slate-400 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <rect x="3" y="6" width="18" height="12" rx="2.2" />
+      <path d="M3 10h18" strokeLinecap="round" />
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     </svg>
   );
 }

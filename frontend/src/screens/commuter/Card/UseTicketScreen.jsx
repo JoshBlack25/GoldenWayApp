@@ -5,6 +5,7 @@ import TicketCard from "../../../components/TicketCard";
 import { useTrips } from "../../../context/trip";
 import { ApiError } from "../../../api/client";
 import { fetchRoutes } from "../LoadTrips/data/loadTripsData";
+<<<<<<< HEAD
 
 const VALIDATOR_DELAY_MS = 2600;
 
@@ -17,10 +18,54 @@ const VALIDATOR_DELAY_MS = 2600;
 export default function UseTicketScreen() {
   const navigate = useNavigate();
   const { rides, pass, deductRide, card, cardBusy } = useTrips();
+=======
+import { activeRouteCodes } from "../../../utils/myRoutes";
+
+/**
+ * Simulated bus validator wired to the real tap endpoint (BR-07). The
+ * commuter picks the route they are boarding, taps, and the backend
+ * decides whether it's a journey, a pass ride or a free transfer
+ * (BR-04). A no-balance card routes straight to the top-up flow.
+ */
+
+const LAST_ROUTE_KEY = "gw:lastRoute";
+
+function readLastRoute() {
+  try {
+    return localStorage.getItem(LAST_ROUTE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveLastRoute(code) {
+  try {
+    localStorage.setItem(LAST_ROUTE_KEY, code);
+  } catch {
+    /* storage unavailable — the picker still works */
+  }
+}
+
+export default function UseTicketScreen() {
+  const navigate = useNavigate();
+  const {
+    rides,
+    pass,
+    deductRide,
+    card,
+    cardBusy,
+    passExpiresOn,
+    unlimitedPass,
+  } = useTrips();
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const [routeCode, setRouteCode] = useState("");
   const [routes, setRoutes] = useState([]);
   const [tapping, setTapping] = useState(false);
   const [error, setError] = useState("");
+<<<<<<< HEAD
+=======
+  const [lastRoute] = useState(readLastRoute);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
   // Real routes for the picker, Go-Easy-eligible ones first.
   useEffect(() => {
@@ -37,9 +82,33 @@ export default function UseTicketScreen() {
     };
   }, []);
 
+<<<<<<< HEAD
   const selectedRoute = useMemo(
     () => routes.find((r) => r.code === routeCode) || null,
     [routes, routeCode],
+=======
+  const myCodes = useMemo(() => activeRouteCodes(card), [card]);
+  const myRoutes = useMemo(
+    () => routes.filter((r) => myCodes.includes(r.code)),
+    [routes, myCodes],
+  );
+  const otherRoutes = useMemo(
+    () => routes.filter((r) => !myCodes.includes(r.code)),
+    [routes, myCodes],
+  );
+
+  // Your pick → last-used route (if still valid) → the one live route on the card.
+  const rememberedCode = routes.some((r) => r.code === lastRoute)
+    ? lastRoute
+    : "";
+  const chosenCode =
+    routeCode ||
+    rememberedCode ||
+    (myRoutes.length === 1 ? myRoutes[0].code : "");
+  const selectedRoute = useMemo(
+    () => routes.find((r) => r.code === chosenCode) || null,
+    [routes, chosenCode],
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   );
 
   async function confirmTap() {
@@ -48,27 +117,54 @@ export default function UseTicketScreen() {
     setError("");
     try {
       const deduction = await deductRide(selectedRoute.code);
+<<<<<<< HEAD
+=======
+      saveLastRoute(selectedRoute.code);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       navigate("/ride-success", {
         replace: true,
         state: { deduction, routeLabel: selectedRoute.label },
       });
     } catch (err) {
       setTapping(false);
+<<<<<<< HEAD
       if (err instanceof ApiError && err.status === 400) {
         setError("No journeys left on this card — top up to keep riding.");
       } else {
         setError(err?.message || "The validator did not respond. Try again.");
+=======
+      const msg = err?.message || "";
+      if (err instanceof ApiError && /no journey balance/i.test(msg)) {
+        setError("No journeys left on this card — top up to keep riding.");
+      } else {
+        setError(msg || "The validator did not respond. Try again.");
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       }
     }
   }
 
+<<<<<<< HEAD
   const noBalance = !cardBusy && card && rides <= 0;
+=======
+  const noBalance = !cardBusy && card && rides <= 0 && !unlimitedPass;
+  const last4 = card ? card.cardNumber.slice(-4) : "••••";
+
+  const option = (r) => (
+    <option key={r.code} value={r.code}>
+      {r.code} — {r.from} → {r.to}
+    </option>
+  );
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
   return (
     <div className="flex flex-col items-center px-6 pb-8 min-h-full">
       <div className="flex items-center gap-2 w-full pb-4">
         <BackButton onClick={() => navigate("/card")} />
+<<<<<<< HEAD
         <h1 className="font-display text-lg font-bold text-gold-500">
+=======
+        <h1 className="font-display text-lg font-bold text-ink-900">
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           Use Bus Ticket
         </h1>
       </div>
@@ -83,7 +179,21 @@ export default function UseTicketScreen() {
           }
           className="w-full max-w-[300px]"
         >
+<<<<<<< HEAD
           <TicketCard />
+=======
+          <TicketCard
+            last4={last4}
+            expiry={
+              passExpiresOn
+                ? new Date(passExpiresOn).toLocaleDateString("en-ZA", {
+                    month: "2-digit",
+                    year: "2-digit",
+                  })
+                : "—"
+            }
+          />
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         </motion.div>
 
         {/* Which bus are you boarding? */}
@@ -98,21 +208,39 @@ export default function UseTicketScreen() {
             <PinIcon />
             <select
               id="tap-route"
+<<<<<<< HEAD
               value={routeCode}
+=======
+              value={chosenCode}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               onChange={(e) => setRouteCode(e.target.value)}
               className="w-full py-3.5 text-[15px] text-ink-900 bg-transparent outline-none appearance-none"
             >
               <option value="">Choose your route…</option>
+<<<<<<< HEAD
               {routes.map((r) => (
                 <option key={r.code} value={r.code}>
                   {r.code} — {r.from} → {r.to}
                 </option>
               ))}
+=======
+              {myRoutes.length > 0 && (
+                <optgroup label="Your routes">{myRoutes.map(option)}</optgroup>
+              )}
+              {otherRoutes.length > 0 && (
+                <optgroup
+                  label={myRoutes.length > 0 ? "Other routes" : "All routes"}
+                >
+                  {otherRoutes.map(option)}
+                </optgroup>
+              )}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
             </select>
             <ChevronIcon />
           </div>
         </div>
 
+<<<<<<< HEAD
         <div className="text-center">
           <h2 className="font-display text-xl font-bold text-ink-900 leading-snug">
             {tapping
@@ -120,12 +248,28 @@ export default function UseTicketScreen() {
               : noBalance
                 ? "Your card is empty"
                 : `${rides} ${rides === 1 ? "journey" : "journeys"} ready`}
+=======
+        <div className="text-center" aria-live="polite">
+          <h2 className="font-display text-xl font-bold text-ink-900 leading-snug">
+            {tapping
+              ? "Validating your tap"
+              : noBalance
+                ? "Your card is empty"
+                : unlimitedPass
+                  ? "Unlimited rides ready"
+                  : `${rides} ${rides === 1 ? "journey" : "journeys"} ready`}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           </h2>
           <p className="mt-2 flex items-center justify-center gap-2 text-[13px] text-slate-500">
             {tapping ? (
               <>
+<<<<<<< HEAD
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Validating&hellip;
+=======
+                <span className="h-1.5 w-1.5 rounded-full bg-gold-500 animate-pulse" />
+                Contacting the validator&hellip;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
               </>
             ) : noBalance ? (
               <>
@@ -190,7 +334,11 @@ function BackButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
+<<<<<<< HEAD
       className="text-ink-900 text-xl leading-none px-1 -ml-1"
+=======
+      className="text-ink-900 text-xl leading-none px-2.5 py-2 -ml-2.5"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       aria-label="Back"
     >
       &larr;
@@ -202,7 +350,11 @@ function PinIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
+<<<<<<< HEAD
       className="h-4 w-4 text-gold-500 shrink-0"
+=======
+      className="h-4 w-4 text-gold-600 shrink-0"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -220,7 +372,11 @@ function ChevronIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
+<<<<<<< HEAD
       className="h-4 w-4 text-slate-400 shrink-0"
+=======
+      className="h-4 w-4 text-slate-500 shrink-0"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"

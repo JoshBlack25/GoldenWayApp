@@ -8,9 +8,18 @@ import tailwindcss from "@tailwindcss/vite";
 // (see src/lib/supabaseClient.js), using VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+<<<<<<< HEAD
   server: {
     host: true,
     // Keep HMR working when the page is opened over the LAN IP on a phone.
+=======
+  build: {
+    // MapLibre is ~800 kB on its own; it now loads only on map screens.
+    chunkSizeWarningLimit: 1100,
+  },
+  server: {
+    host: true,
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     hmr: { host: "localhost" },
   },
 });

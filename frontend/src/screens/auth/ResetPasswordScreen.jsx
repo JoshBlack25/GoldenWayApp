@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useState } from "react";
+=======
+import { useEffect, useState } from "react";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { updateMyPassword } from "../../api/auth";
@@ -6,17 +10,48 @@ import { supabase } from "../../lib/supabaseClient";
 
 /**
  * Reset Password — destination of the Supabase recovery email link.
+<<<<<<< HEAD
  * supabase-js consumes the ?code= token (detectSessionInUrl) to start a
  * recovery session; this screen then sets the new password (mock M1).
  */
 export default function ResetPasswordScreen() {
   const navigate = useNavigate();
+=======
+ * supabase-js consumes the recovery token (detectSessionInUrl) and
+ * establishes a session before this screen mounts; we verify that
+ * session exists before showing the form, same pattern as
+ * StaffCompleteSignupScreen for the invite flow.
+ */
+export default function ResetPasswordScreen() {
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
+  const [sessionOk, setSessionOk] = useState(false);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!cancelled) {
+        setSessionOk(!!session);
+        setChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const weak = password.length > 0 && password.length < 8;
   const mismatch = confirm.length > 0 && confirm !== password;
   const invalid = password.length < 8 || confirm !== password;
@@ -28,15 +63,63 @@ export default function ResetPasswordScreen() {
     setBusy(true);
     try {
       await updateMyPassword(password);
+<<<<<<< HEAD
       await supabase.auth.signOut(); // force a clean re-login
       navigate("/login", { replace: true, state: { resetDone: true } });
     } catch (err) {
       setError(err?.message || "Could not update the password. The link may have expired — request a new one.");
+=======
+      await supabase.auth.signOut();
+      navigate("/login", { replace: true, state: { resetDone: true } });
+    } catch (err) {
+      setError(
+        err?.message ||
+          "Could not update the password. The link may have expired — request a new one.",
+      );
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     } finally {
       setBusy(false);
     }
   }
 
+<<<<<<< HEAD
+=======
+  if (checking) {
+    return (
+      <div className="app-shell flex flex-col items-center justify-center">
+        <p className="text-[13px] text-slate-500">Checking your link…</p>
+      </div>
+    );
+  }
+
+  if (!sessionOk) {
+    return (
+      <div className="app-shell flex flex-col">
+        <div className="flex items-center px-5 pt-5 pb-4">
+          <img src="/images/Logo1.png" alt="GoldenWay" className="h-6 w-auto" />
+        </div>
+        <div className="flex-1 px-7 pt-4 pb-8 text-center mt-10">
+          <h1 className="font-display text-2xl font-bold text-ink-900">
+            Link expired
+          </h1>
+          <p className="text-slate-500 text-[14px] mt-3 leading-relaxed">
+            This password reset link is no longer valid — it may have already
+            been used, or it's expired. Request a new one from the sign-in
+            screen.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/forgot-password")}
+            className="mt-8 w-full btn-gold py-4 text-[15px]"
+          >
+            Request a new link
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return (
     <div className="app-shell flex flex-col">
       <div className="flex items-center px-5 pt-5 pb-4">
@@ -50,7 +133,15 @@ export default function ResetPasswordScreen() {
         className="flex-1 px-7 pt-4"
       >
         <div className="flex justify-center mb-5">
+<<<<<<< HEAD
           <img src="/images/Logo2.png" alt="GoldenWay" className="h-16 w-auto" />
+=======
+          <img
+            src="/images/Logo2.png"
+            alt="GoldenWay"
+            className="h-16 w-auto"
+          />
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         </div>
 
         <h1 className="font-display text-2xl font-bold text-ink-900 text-center">
@@ -104,7 +195,19 @@ export default function ResetPasswordScreen() {
   );
 }
 
+<<<<<<< HEAD
 function PasswordInput({ label, placeholder, value, onChange, show, onToggle, error }) {
+=======
+function PasswordInput({
+  label,
+  placeholder,
+  value,
+  onChange,
+  show,
+  onToggle,
+  error,
+}) {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[13px] font-medium text-ink-700">{label}</label>

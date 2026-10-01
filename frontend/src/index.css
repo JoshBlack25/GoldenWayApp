@@ -1,5 +1,22 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+<<<<<<< HEAD
+=======
+@import "tw-animate-css";
+
+/* shadcn-style tokens — only what the mapcn map components use
+   (popups, tooltips, controls). Mapped to GoldenWay colours. */
+@theme inline {
+  --color-background: var(--color-cream-50);
+  --color-foreground: var(--color-ink-900);
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--color-ink-900);
+  --color-muted-foreground: var(--color-slate-500);
+  --color-border: rgba(36, 31, 16, 0.12);
+  --color-ring: var(--color-gold-500);
+  --color-accent: var(--color-cream-100);
+}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
 @theme {
   /* GABS brand identity — Golden Arrow red is the signature accent of the
@@ -9,13 +26,26 @@
   --color-brand-600: #c21f17;
   --color-brand-50: #fdeceb;
 
+<<<<<<< HEAD
   /* Goldenway design tokens — deluxe gold range */
+=======
+  /* Goldenway design tokens — deluxe gold range.
+     gold-50..500 are for fills/gradients/borders (bright).
+     gold-600..700 are TEXT-SAFE (≥4.5:1 on cream) — use these for gold text. */
+  --color-gold-50: #fff9e6;
+  --color-gold-100: #fff1c2;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   --color-gold-200: #ffe9ad;
   --color-gold-300: #ffd873;
   --color-gold-400: #ffc52e;
   --color-gold-500: #f0b429;
+<<<<<<< HEAD
   --color-gold-600: #d9a441;
   --color-gold-700: #b9852a;
+=======
+  --color-gold-600: #8a6112;
+  --color-gold-700: #6f4d0c;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   --color-logo-gold: #e0ad06;
 
   --color-cream-50: #fffdfb;
@@ -24,8 +54,13 @@
 
   --color-ink-900: #241f10;
   --color-ink-700: #3d3626;
+<<<<<<< HEAD
   --color-slate-500: #9a978d;
   --color-slate-400: #b3b0a6;
+=======
+  --color-slate-500: #6b675b; /* secondary text, ~5:1 on cream */
+  --color-slate-400: #8f8b7f; /* placeholders / hints */
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
   --color-navy-950: #0b1526;
   --color-navy-900: #12203d;
@@ -35,22 +70,54 @@
   --font-body: "Inter", sans-serif;
 
   /* Depth system — warm, soft, layered (premium feel, never flat) */
+<<<<<<< HEAD
   --shadow-card: 0 1px 2px rgba(36, 31, 16, 0.04), 0 8px 24px -12px rgba(36, 31, 16, 0.14);
   --shadow-card-lg: 0 2px 4px rgba(36, 31, 16, 0.05), 0 24px 48px -20px rgba(36, 31, 16, 0.22);
   --shadow-glow-gold: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 -8px 18px -8px rgba(185, 133, 42, 0.45) inset, 0 14px 30px -12px rgba(240, 180, 41, 0.55);
   --shadow-glow-brand: 0 10px 26px -12px rgba(225, 37, 27, 0.55);
   --shadow-nav: 0 -1px 0 rgba(36, 31, 16, 0.05), 0 -12px 32px -18px rgba(36, 31, 16, 0.25);
+=======
+  --shadow-card:
+    0 1px 2px rgba(36, 31, 16, 0.04), 0 8px 24px -12px rgba(36, 31, 16, 0.14);
+  --shadow-card-lg:
+    0 2px 4px rgba(36, 31, 16, 0.05), 0 24px 48px -20px rgba(36, 31, 16, 0.22);
+  --shadow-glow-gold:
+    0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 -8px 18px -8px rgba(185, 133, 42, 0.45) inset,
+    0 14px 30px -12px rgba(240, 180, 41, 0.55);
+  --shadow-glow-brand: 0 10px 26px -12px rgba(225, 37, 27, 0.55);
+  --shadow-nav:
+    0 -1px 0 rgba(36, 31, 16, 0.05), 0 -12px 32px -18px rgba(36, 31, 16, 0.25);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-float: float 7s ease-in-out infinite;
 
   @keyframes shimmer {
+<<<<<<< HEAD
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
   }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
+=======
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   }
 }
 
@@ -83,6 +150,7 @@ body {
   position: relative;
   overflow: hidden;
   background:
+<<<<<<< HEAD
     radial-gradient(120% 40% at 50% -8%, rgba(255, 197, 46, 0.14) 0%, rgba(255, 197, 46, 0) 60%),
     linear-gradient(180deg, #fffdfb 0%, #fdf3e7 55%, #f8ecd9 100%);
 }
@@ -96,6 +164,31 @@ body {
   position: relative;
   background:
     radial-gradient(120% 40% at 50% -8%, rgba(255, 197, 46, 0.14) 0%, rgba(255, 197, 46, 0) 60%),
+=======
+    radial-gradient(
+      120% 40% at 50% -8%,
+      rgba(255, 197, 46, 0.14) 0%,
+      rgba(255, 197, 46, 0) 60%
+    ),
+    linear-gradient(180deg, #fffdfb 0%, #fdf3e7 55%, #f8ecd9 100%);
+}
+
+/* Staff shell — SAME palette and SAME 430px mobile frame as the commuter
+   app (wireframes: one brand, one canvas). Staff is distinguished by
+   chrome + content, not colour or width. */
+.staff-shell {
+  max-width: 430px;
+  margin-inline: auto;
+  min-height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 40% at 50% -8%,
+      rgba(255, 197, 46, 0.14) 0%,
+      rgba(255, 197, 46, 0) 60%
+    ),
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     linear-gradient(180deg, #fffdfb 0%, #fdf3e7 55%, #f8ecd9 100%);
 }
 
@@ -110,7 +203,22 @@ body {
 }
 
 @media (min-width: 431px) {
+<<<<<<< HEAD
   .app-shell {
+=======
+  body {
+    background:
+      radial-gradient(
+        60% 50% at 50% 0%,
+        rgba(255, 197, 46, 0.18),
+        transparent 70%
+      ),
+      #efe6d4;
+  }
+
+  .app-shell,
+  .staff-shell {
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
     box-shadow:
       0 0 0 1px var(--color-cream-200),
       0 60px 120px -40px rgba(36, 31, 16, 0.35);
@@ -143,17 +251,45 @@ body {
   gap: 0.5rem;
   border-radius: 1rem;
   background:
+<<<<<<< HEAD
     linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 38%),
     linear-gradient(135deg, var(--color-gold-300) 0%, var(--color-gold-400) 45%, var(--color-gold-500) 100%);
+=======
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.35) 0%,
+      rgba(255, 255, 255, 0) 38%
+    ),
+    linear-gradient(
+      135deg,
+      var(--color-gold-300) 0%,
+      var(--color-gold-400) 45%,
+      var(--color-gold-500) 100%
+    );
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   color: var(--color-ink-900);
   font-family: var(--font-display);
   font-weight: 600;
   box-shadow: var(--shadow-glow-gold);
+<<<<<<< HEAD
   transition: transform 0.15s ease, filter 0.2s ease, box-shadow 0.2s ease;
 }
 .btn-gold:hover:not(:disabled) {
   filter: brightness(1.04) saturate(1.05);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 -8px 18px -8px rgba(185, 133, 42, 0.45) inset, 0 18px 38px -12px rgba(240, 180, 41, 0.7);
+=======
+  transition:
+    transform 0.15s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.btn-gold:hover:not(:disabled) {
+  filter: brightness(1.04) saturate(1.05);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.45) inset,
+    0 -8px 18px -8px rgba(185, 133, 42, 0.45) inset,
+    0 18px 38px -12px rgba(240, 180, 41, 0.7);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 }
 .btn-gold:active:not(:disabled) {
   transform: scale(0.975);
@@ -176,7 +312,14 @@ body {
   color: var(--color-ink-900);
   font-family: var(--font-display);
   font-weight: 600;
+<<<<<<< HEAD
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+=======
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 }
 .btn-ghost:hover {
   border-color: var(--color-gold-500);
@@ -193,9 +336,22 @@ body {
   gap: 0.625rem;
   border-radius: 1rem;
   border: 1.5px solid rgba(240, 180, 41, 0.28);
+<<<<<<< HEAD
   background: linear-gradient(180deg, rgba(253, 243, 231, 0.9), rgba(248, 236, 217, 0.65));
   padding-inline: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+=======
+  background: linear-gradient(
+    180deg,
+    rgba(253, 243, 231, 0.9),
+    rgba(248, 236, 217, 0.65)
+  );
+  padding-inline: 1rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 }
 .field-shell:focus-within {
   border-color: var(--color-gold-500);
@@ -210,6 +366,15 @@ body {
   letter-spacing: 0.18em;
 }
 
+<<<<<<< HEAD
+=======
+/* Small text buttons: bigger hit area (~44px) with no layout shift */
+.link-action {
+  padding: 0.625rem 0.5rem;
+  margin: -0.625rem -0.5rem;
+}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 /* Frosted surfaces */
 .glass {
   background: rgba(255, 253, 251, 0.78);
@@ -225,7 +390,16 @@ body {
 
 /* Skeleton shimmer for loading states */
 .skeleton {
+<<<<<<< HEAD
   background: linear-gradient(90deg, rgba(248, 236, 217, 0.6) 25%, rgba(255, 255, 255, 0.9) 50%, rgba(248, 236, 217, 0.6) 75%);
+=======
+  background: linear-gradient(
+    90deg,
+    rgba(248, 236, 217, 0.6) 25%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(248, 236, 217, 0.6) 75%
+  );
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
   border-radius: 0.75rem;
@@ -238,6 +412,16 @@ body {
   border-radius: 0.5rem;
 }
 
+<<<<<<< HEAD
+=======
+/* Inputs inside a field shell: the shell itself glows on focus, so the
+   inner input's outline would be a doubled highlight. Suppress it —
+   buttons/links keep the focus ring. */
+.field-shell :is(input, textarea, select):focus-visible {
+  outline: none;
+}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 /* Print — kiosk receipt printing (Joshua Black, K4) */
 @media print {
   body * {

@@ -10,7 +10,10 @@ import {
   mapProduct,
   mapRoute,
   MAX_SAVED_CARDS,
+<<<<<<< HEAD
   INITIAL_CARDS,
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 } from "./loadTripsData";
 
 describe("productLabel", () => {
@@ -144,9 +147,14 @@ describe("BR-03 exclusion copy", () => {
 });
 
 describe("saved cards", () => {
+<<<<<<< HEAD
   it("caps saved cards and seeds the demo with two", () => {
     expect(MAX_SAVED_CARDS).toBe(3);
     expect(INITIAL_CARDS).toHaveLength(2);
     expect(INITIAL_CARDS.every((c) => /^\d{4}$/.test(c.last4))).toBe(true);
+=======
+  it("caps the wallet at three methods", () => {
+    expect(MAX_SAVED_CARDS).toBe(3);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   });
 });

@@ -3,6 +3,10 @@ import {
   fetchQuoteFromDb,
   fetchRoutesFromDb,
 } from "../../../../api/goldenway";
+<<<<<<< HEAD
+=======
+import { productLabel, isUnlimited } from "../../../../utils/productLabels";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 
 /**
  * Live GABS fare catalog for the Load Trips flow — backed directly by
@@ -31,10 +35,16 @@ export const ROUTE_LABELS = {
   "PAARL-BELL": "Paarl → Bellville",
 };
 
+<<<<<<< HEAD
+=======
+export { productLabel, isUnlimited };
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 export function routeLabel(code) {
   return ROUTE_LABELS[code] || code;
 }
 
+<<<<<<< HEAD
 /** "GOEASY-5" → "Go Easy 5-Ride", "WEEKLY-KHA-CPT" → "Weekly Pass". */
 export function productLabel(code) {
   if (!code) return "GoldenWay Pass";
@@ -52,6 +62,8 @@ export function isUnlimited(code) {
   return upper.startsWith("WEEKLY") || upper.startsWith("MONTHLY");
 }
 
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 /** FareProductResponse → the plan shape the step components render. */
 export function mapProduct(fpr) {
   return {
@@ -81,6 +93,19 @@ export function mapRoute(rr) {
 let routesCache = null;
 const productsCache = new Map();
 
+<<<<<<< HEAD
+=======
+/**
+ * Drop the fare catalogue caches. Called after a successful purchase so
+ * the next visit to Load Trips re-reads effective-dated prices instead of
+ * showing a stale fare for the rest of the session.
+ */
+export function clearFareCache() {
+  routesCache = null;
+  productsCache.clear();
+}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 export async function fetchRoutes() {
   if (routesCache) return routesCache;
   const list = await fetchRoutesFromDb();
@@ -120,9 +145,12 @@ export function detectCardBrand(cardNumber) {
 
 export const MAX_SAVED_CARDS = 3;
 
+<<<<<<< HEAD
 export const INITIAL_CARDS = [
   { id: "card-1", brand: "Visa", last4: "4582", expiry: "08/26" },
   { id: "card-2", brand: "Mastercard", last4: "8829", expiry: "03/27" },
 ];
 
+=======
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 export const GOLD_CARD = { label: "Gold Card", last4: "4821", brand: "Visa" };

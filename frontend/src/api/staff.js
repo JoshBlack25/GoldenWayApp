@@ -19,7 +19,13 @@ function toApiError(error, fallbackStatus = 400) {
     return new ApiError(403, { error: "Admin only" });
   }
   if (/not PENDING|nothing to decide/i.test(message)) {
+<<<<<<< HEAD
     return new ApiError(409, { error: "This request was already decided — refresh the queue." });
+=======
+    return new ApiError(409, {
+      error: "This request was already decided — refresh the queue.",
+    });
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   }
   if (/already exists|duplicate/i.test(message)) {
     return new ApiError(409, { error: message });
@@ -71,6 +77,44 @@ export async function decideStaffAccess(requestId, approve, note) {
   return mapRequest(Array.isArray(row) ? row[0] : row);
 }
 
+<<<<<<< HEAD
+=======
+/**
+ * Fires the invite-staff Edge Function after an ADMIN approves a
+ * request — creates the auth.users row via inviteUserByEmail() and
+ * sends Supabase's "Invite user" email (through the existing custom
+ * SMTP). The applicant sets a password on /staff/complete-signup.
+ */
+export async function sendStaffInvite({
+  requestId,
+  email,
+  firstName,
+  surname,
+  requestedRole,
+}) {
+  const { data, error } = await supabase.functions.invoke("invite-staff", {
+    body: {
+      requestId,
+      email,
+      firstName,
+      surname,
+      requestedRole,
+    },
+  });
+  if (error) {
+    // supabase-js wraps non-2xx responses in error; the function's own
+    // { error: "..." } body is usually in error.context, but fall back
+    // to a generic message if that shape ever changes.
+    const message =
+      error.context?.error ||
+      error.message ||
+      "Could not send the invite email";
+    throw new ApiError(400, { error: message });
+  }
+  return data;
+}
+
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 /** Direct invite: pre-approve someone who never self-requested (ADMIN-only). */
 export async function inviteStaffMember({ email, firstName, surname, role }) {
   const row = await supabase
@@ -86,3 +130,78 @@ export async function inviteStaffMember({ email, firstName, surname, role }) {
     });
   return mapRequest(Array.isArray(row) ? row[0] : row);
 }
+<<<<<<< HEAD
+=======
+
+// ---------------------------------------------------------------------
+// OTP onboarding (migration 0011) — REMOVED in 0012.
+// Staff onboarding now needs no email/OTP: the applicant signs up with a
+// password, the ADMIN approves, and the approval trigger creates their
+// staff row. The sign-in gate lives in loginAny() (src/api/auth.js).
+// ---------------------------------------------------------------------
+
+/** ADMIN: latest staff audit-log entries (staff_action_log, ADMIN-gated). */
+export async function fetchStaffAuditLog(limit = 30) {
+  const { data, error } = await supabase
+    .from("staff_action_log")
+    .select("id,actor_id,action,entity,entity_id,details,at")
+    .order("at", { ascending: false })
+    .limit(limit);
+  if (error) throw toApiError(error);
+  return (data || []).map((row) => ({
+    id: row.id,
+    actorId: row.actor_id,
+    action: row.action,
+    entity: row.entity,
+    entityId: row.entity_id,
+    details: row.details || {},
+    at: row.at,
+  }));
+}
+
+// ---------------------------------------------------------------------
+// Self-service profile (migration 0013) — every staff role, CLERK
+// included, edits their own name / phone / password from the Profile tab.
+// ---------------------------------------------------------------------
+
+/**
+ * Update my own staff profile. Password change requires the CURRENT
+ * password (verified server-side against auth.users bcrypt hash).
+ * @returns {{ firstName, surname, phone, email, role, passwordChanged }}
+ */
+export async function updateMyStaffDetails({
+  firstName,
+  surname,
+  phone,
+  changePassword = false,
+  currentPassword,
+  newPassword,
+}) {
+  const row = await supabase
+    .rpc("update_my_staff_details", {
+      p_first_name: firstName.trim(),
+      p_surname: surname.trim(),
+      p_phone: phone?.trim() || null,
+      p_change_password: changePassword,
+      p_current_password: changePassword ? currentPassword : null,
+      p_new_password: changePassword ? newPassword : null,
+    })
+    .then(({ data, error }) => {
+      if (error) throw error;
+      return data;
+    });
+  const payload = Array.isArray(row) ? row[0] : row;
+  if (!payload)
+    throw new ApiError(500, {
+      error: "Empty response from update_my_staff_details",
+    });
+  return {
+    firstName: payload.firstName,
+    surname: payload.surname,
+    phone: payload.phone,
+    email: payload.email,
+    role: payload.role,
+    passwordChanged: payload.passwordChanged,
+  };
+}
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc

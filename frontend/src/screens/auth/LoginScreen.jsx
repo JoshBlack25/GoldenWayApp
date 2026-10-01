@@ -35,6 +35,12 @@ export default function LoginScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError("Incorrect email or password. Please try again.");
+<<<<<<< HEAD
+=======
+      } else if (err instanceof ApiError) {
+        // Approval-gate messages (pending / denied / unprofiled) land here.
+        setError(err.message);
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       } else {
         setError("Could not reach the GoldenWay service. Try again shortly.");
       }

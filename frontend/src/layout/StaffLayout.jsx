@@ -1,7 +1,11 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "../context/auth";
+<<<<<<< HEAD
 import { useNotifications } from "../context/NotificationProvider";
+=======
+import { useNotifications } from "../context/useNotifications";
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
 import { tabsForRole, Icons } from "../config/navigation";
 import StaffAvatar from "../components/staff/StaffAvatar";
 

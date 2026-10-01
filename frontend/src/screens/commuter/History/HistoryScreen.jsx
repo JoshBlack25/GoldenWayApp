@@ -2,10 +2,18 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTrips } from "../../../context/trip";
+<<<<<<< HEAD
 
 export default function HistoryScreen() {
   const navigate = useNavigate();
   const { transactions, rides } = useTrips();
+=======
+import TripLoadError from "../../../components/TripLoadError";
+
+export default function HistoryScreen() {
+  const navigate = useNavigate();
+  const { transactions } = useTrips();
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
   const [query, setQuery] = useState("");
 
   // Real stats from the live feed: ride events this month + hours on the road
@@ -27,6 +35,10 @@ export default function HistoryScreen() {
 
   return (
     <div className="flex flex-col px-5 pb-6">
+<<<<<<< HEAD
+=======
+      <TripLoadError className="mb-4" />
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
       <div className="flex items-center justify-between pb-4">
         <h1 className="flex items-center gap-2 font-display text-xl font-bold text-gold-500">
           <ClockIcon /> History

@@ -14,7 +14,11 @@ export default function DashboardLayout() {
   return (
     <div className="app-shell h-dvh flex flex-col">
       <DashboardHeader />
+<<<<<<< HEAD
       <div className="flex-1 overflow-y-auto no-scrollbar">
+=======
+      <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -22,7 +26,11 @@ export default function DashboardLayout() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
+<<<<<<< HEAD
             className="min-h-full"
+=======
+            className="flex flex-col flex-1 min-h-full"
+>>>>>>> d5273773720dca08d00f9421d34ca764068844bc
           >
             <Outlet />
           </motion.div>
