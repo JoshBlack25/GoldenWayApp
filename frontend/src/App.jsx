@@ -228,6 +228,10 @@ const staffScreens = {
   catalog: { element: <CatalogScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   alerts: { element: <AlertsScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
+  inspections: {
+    element: <InspectionHistoryScreen />,
+    roles: ["INSPECTOR", "ADMIN"],
+  },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
   timetable: {
     element: <TimetableScreen hideCta />,
