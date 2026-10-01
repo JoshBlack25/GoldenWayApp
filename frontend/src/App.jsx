@@ -69,6 +69,9 @@ const AlertsScreen = lazy(() => import("./screens/staff/admin/AlertsScreen"));
 const VerifyScreen = lazy(
   () => import("./screens/staff/inspector/VerifyScreen"),
 );
+const InspectionHistoryScreen = lazy(
+  () => import("./screens/staff/inspector/InspectionHistoryScreen"),
+);
 const RunsScreen = lazy(() => import("./screens/staff/driver/RunsScreen"));
 const InboxScreen = lazy(() => import("./screens/staff/agent/InboxScreen"));
 const ChatScreen = lazy(() => import("./screens/staff/agent/ChatScreen"));
