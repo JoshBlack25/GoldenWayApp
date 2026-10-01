@@ -5,16 +5,25 @@ import TicketCard from "../../../components/TicketCard";
 import { useTrips } from "../../../context/trip";
 import { ApiError } from "../../../api/client";
 import { fetchRoutes } from "../LoadTrips/data/loadTripsData";
+import { activeRouteCodes } from "../../../utils/myRoutes";
 
 /**
- * Simulated bus validator wired to the real tap endpoint (BR-07). Thandi
- * picks the route she is boarding, taps, and the backend decides whether
- * it's a journey or a free transfer (BR-04). A no-balance card routes her
- * straight to the top-up flow instead of failing silently.
+ * Simulated bus validator wired to the real tap endpoint (BR-07). The
+ * commuter picks the route they are boarding, taps, and the backend
+ * decides whether it's a journey, a pass ride or a free transfer
+ * (BR-04). A no-balance card routes straight to the top-up flow.
  */
 export default function UseTicketScreen() {
   const navigate = useNavigate();
-  const { rides, pass, deductRide, card, cardBusy } = useTrips();
+  const {
+    rides,
+    pass,
+    deductRide,
+    card,
+    cardBusy,
+    passExpiresOn,
+    unlimitedPass,
+  } = useTrips();
   const [routeCode, setRouteCode] = useState("");
   const [routes, setRoutes] = useState([]);
   const [tapping, setTapping] = useState(false);
@@ -35,9 +44,22 @@ export default function UseTicketScreen() {
     };
   }, []);
 
+  const myCodes = useMemo(() => activeRouteCodes(card), [card]);
+  const myRoutes = useMemo(
+    () => routes.filter((r) => myCodes.includes(r.code)),
+    [routes, myCodes],
+  );
+  const otherRoutes = useMemo(
+    () => routes.filter((r) => !myCodes.includes(r.code)),
+    [routes, myCodes],
+  );
+
+  // One live route on the card → preselect it; otherwise the commuter picks.
+  const chosenCode =
+    routeCode || (myRoutes.length === 1 ? myRoutes[0].code : "");
   const selectedRoute = useMemo(
-    () => routes.find((r) => r.code === routeCode) || null,
-    [routes, routeCode],
+    () => routes.find((r) => r.code === chosenCode) || null,
+    [routes, chosenCode],
   );
 
   async function confirmTap() {
@@ -52,15 +74,23 @@ export default function UseTicketScreen() {
       });
     } catch (err) {
       setTapping(false);
-      if (err instanceof ApiError && err.status === 400) {
+      const msg = err?.message || "";
+      if (err instanceof ApiError && /no journey balance/i.test(msg)) {
         setError("No journeys left on this card — top up to keep riding.");
       } else {
-        setError(err?.message || "The validator did not respond. Try again.");
+        setError(msg || "The validator did not respond. Try again.");
       }
     }
   }
 
-  const noBalance = !cardBusy && card && rides <= 0;
+  const noBalance = !cardBusy && card && rides <= 0 && !unlimitedPass;
+  const last4 = card ? card.cardNumber.slice(-4) : "••••";
+
+  const option = (r) => (
+    <option key={r.code} value={r.code}>
+      {r.code} — {r.from} → {r.to}
+    </option>
+  );
 
   return (
     <div className="flex flex-col items-center px-6 pb-8 min-h-full">
@@ -81,7 +111,17 @@ export default function UseTicketScreen() {
           }
           className="w-full max-w-[300px]"
         >
-          <TicketCard />
+          <TicketCard
+            last4={last4}
+            expiry={
+              passExpiresOn
+                ? new Date(passExpiresOn).toLocaleDateString("en-ZA", {
+                    month: "2-digit",
+                    year: "2-digit",
+                  })
+                : "—"
+            }
+          />
         </motion.div>
 
         {/* Which bus are you boarding? */}
@@ -96,16 +136,21 @@ export default function UseTicketScreen() {
             <PinIcon />
             <select
               id="tap-route"
-              value={routeCode}
+              value={chosenCode}
               onChange={(e) => setRouteCode(e.target.value)}
               className="w-full py-3.5 text-[15px] text-ink-900 bg-transparent outline-none appearance-none"
             >
               <option value="">Choose your route…</option>
-              {routes.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.code} — {r.from} → {r.to}
-                </option>
-              ))}
+              {myRoutes.length > 0 && (
+                <optgroup label="Your routes">{myRoutes.map(option)}</optgroup>
+              )}
+              {otherRoutes.length > 0 && (
+                <optgroup
+                  label={myRoutes.length > 0 ? "Other routes" : "All routes"}
+                >
+                  {otherRoutes.map(option)}
+                </optgroup>
+              )}
             </select>
             <ChevronIcon />
           </div>
@@ -117,7 +162,9 @@ export default function UseTicketScreen() {
               ? "Ticket validated"
               : noBalance
                 ? "Your card is empty"
-                : `${rides} ${rides === 1 ? "journey" : "journeys"} ready`}
+                : unlimitedPass
+                  ? "Unlimited rides ready"
+                  : `${rides} ${rides === 1 ? "journey" : "journeys"} ready`}
           </h2>
           <p className="mt-2 flex items-center justify-center gap-2 text-[13px] text-slate-500">
             {tapping ? (
