@@ -33,6 +33,7 @@ import UpdateProfileScreen from "./screens/commuter/Profile/UpdateProfileScreen"
 import NotificationsScreen from "./screens/commuter/Notifications/NotificationsScreen";
 
 // Staff console — shared + per-role (one folder per team lane)
+import InspectionHistoryScreen from "./screens/staff/inspector/InspectionHistoryScreen";
 import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
 import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
 import TeamScreen from "./screens/staff/admin/TeamScreen";
@@ -79,6 +80,7 @@ const commuterTree = (
  * shared chrome lives in screens/staff/shared/ + layout/StaffLayout.
  */
 const staffScreens = {
+  inspections: { element: <InspectionHistoryScreen />, roles: ["INSPECTOR", "ADMIN"] },
   onboarding: { element: <OnboardingScreen />, roles: ["ADMIN"] },
   team: { element: <TeamScreen />, roles: ["ADMIN"] },
   catalog: { element: <CatalogScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
