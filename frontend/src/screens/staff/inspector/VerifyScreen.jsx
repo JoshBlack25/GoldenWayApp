@@ -1,56 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { lookupCardForInspection, logInspectionOutcome, fetchMyRecentInspections } from "../../../api/operations";
+import {
+  lookupCardForInspection,
+  logInspectionOutcome,
+  fetchMyRecentInspections,
+  searchCardNumbers,
+  blockCard,
+  verifyConcession,
+} from "../../../api/operations";
 
-// ============================================================================
-// READ ME FIRST — how this file talks to the database
-// ============================================================================
-// This is a React "screen" (a page/component). It does not touch the
-// database directly. Instead it calls plain JavaScript functions imported
-// above from "../../../api/operations" (that file is
-// frontend/src/api/operations.js). Each of those functions sends one
-// request to Supabase, which runs a named function ("RPC" = Remote
-// Procedure Call) written in SQL inside the database itself. The SQL for
-// every one of those functions lives in the supabase/migrations/ folder.
-//
-// The three-step chain to remember, for every action on this screen:
-//   1. User clicks a button here (VerifyScreen.jsx)
-//   2. That calls a function from api/operations.js
-//   3. That function calls supabase.rpc("some_name", ...), which runs the
-//      SQL function of that EXACT name in the database.
-//
-// For this screen specifically:
-//   - lookupCardForInspection(cardNumber)
-//       -> calls the database function  lookup_card_for_inspection()
-//       -> defined in supabase/migrations/0006_operations.sql
-//          (its permission/security rules were tightened later in
-//          supabase/migrations/0016_inspector_hardening.sql)
-//   - logInspectionOutcome(cardNumber, outcome, note)
-//       -> calls the database function  log_inspection_outcome()
-//       -> also defined in 0006_operations.sql, hardened in 0016
-//   - fetchMyRecentInspections(limit)
-//       -> does NOT call a database function — it reads straight from the
-//          "inspection_events" table (a normal SELECT query), filtered to
-//          only this inspector's own records
-//
-// If someone asks "where does the data actually come from / get saved?",
-// the answer is always: search the .sql files in supabase/migrations/ for
-// the function name shown in api/operations.js.
-// ============================================================================
+const NOTE_MAX = 300;
 
-const NOTE_MAX = 300; // matches the 300-character limit enforced again on the server side (see 0016 migration) — this is just so the user gets instant feedback instead of waiting for an error
-
-/**
- * INSPECTOR — Handheld verifier (D5, BR-08). Card number in, live card
- * report out via lookup_card_for_inspection() (privacy-safe: first name +
- * initial only), then the outcome is logged with log_inspection_outcome().
- */
-
-// The 5 possible outcomes an inspector can record for a card check.
-// "code" is the exact value saved to the database (it must match the list
-// of allowed values in the "outcome" column, enforced by a CHECK constraint
-// in supabase/migrations/0006_operations.sql). "label"/"cls" are just for
-// how the button looks on screen.
 const OUTCOMES = [
   { code: "VALID", label: "Valid", cls: "bg-emerald-500" },
   { code: "NO_PRODUCT", label: "No product", cls: "bg-amber-500" },
@@ -59,20 +19,36 @@ const OUTCOMES = [
   { code: "REFUSED", label: "Refused", cls: "bg-brand-500" },
 ];
 
-export default function VerifyScreen() {
-  // ---- Everything below is just "memory" for this screen while it's open.
-  // React calls this "state" — when one of these changes, the screen
-  // automatically redraws itself to match. None of this is saved anywhere
-  // permanent; it all resets if the page reloads.
+// Statuses an inspector is allowed to block (must match block_card() in the database)
+const BLOCKABLE = ["ACTIVE", "UNREGISTERED"];
 
-  const [cardNumber, setCardNumber] = useState(""); // whatever the inspector has typed into the search box
-  const [report, setReport] = useState(null); // the card's details, once we've looked one up (null = nothing looked up yet)
-  const [note, setNote] = useState(""); // the optional note typed before logging an outcome
-  const [busy, setBusy] = useState(false); // true while a "look up" request is in flight (disables the button so you can't double-click)
-  const [logging, setLogging] = useState(false); // true while a "log outcome" request is in flight
-  const [error, setError] = useState(""); // an error message to show, if something went wrong
-  const [loggedMsg, setLoggedMsg] = useState(""); // a "success!" message to show after logging an outcome
-  const [recent, setRecent] = useState([]); // this inspector's own last few lookups, shown at the bottom of the screen
+export default function VerifyScreen() {
+  const [cardNumber, setCardNumber] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [report, setReport] = useState(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [error, setError] = useState("");
+  const [loggedMsg, setLoggedMsg] = useState("");
+  const [recent, setRecent] = useState([]);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+
+  // Used to ignore slow, out-of-date suggestion responses
+  const suggestReq = useRef(0);
+
+  const statusStyle = (status) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-green-100 text-green-700";
+      case "BLOCKED":
+        return "bg-red-100 text-red-700";
+      case "UNREGISTERED":
+        return "bg-gray-100 text-gray-600";
+      default:
+        return "bg-ink-100 text-ink-900/50";
+    }
+  };
 
   // Loads "your recent lookups" from the database. Called once when the
   // screen first opens, and again every time an outcome is logged (so the
@@ -90,11 +66,34 @@ export default function VerifyScreen() {
     loadRecent();
   }, []);
 
-  // Runs when the inspector submits the "Look up" search box.
-  // Sends the typed card number to the database (via
-  // lookupCardForInspection -> lookup_card_for_inspection() in SQL) and
-  // stores whatever comes back in `report`, which is what makes the card
-  // details section below appear.
+  // Looks a card up and converts the database's snake_case answer into the
+  // camelCase shape this screen uses. Returns null when the card doesn't exist.
+  // lookup_card_for_inspection() returns one jsonb object, but we also accept
+  // an array so the screen still works if the function is ever changed back.
+  async function fetchReport(number) {
+    const result = await lookupCardForInspection(number);
+    const data = Array.isArray(result) ? result[0] : result;
+    if (!data) return null;
+    return {
+      cardNumber: data.card_number,
+      status: data.status,
+      registered: data.registered,
+      ownerName: data.owner_name,
+      commuterId: data.commuter_id,
+      concessionType: data.concession_type,
+      concessionVerified: data.concession_verified,
+      journeysRemaining: data.journeys_remaining,
+      loadedProducts: (data.loaded_products || []).map((p) => ({
+        productCode: p.product_code,
+        routeCode: p.route_code,
+        journeysTotal: p.journeys_total,
+        journeysUsed: p.journeys_used,
+        validTo: p.valid_to,
+      })),
+      recentInspections: data.recent_inspections || [],
+    };
+  }
+
   async function lookup(e) {
     e?.preventDefault();
     if (!cardNumber.trim() || busy) return;
@@ -102,8 +101,11 @@ export default function VerifyScreen() {
     setError("");
     setLoggedMsg("");
     setReport(null);
+    setSuggestions([]);
     try {
-      setReport(await lookupCardForInspection(cardNumber));
+      const r = await fetchReport(cardNumber);
+      if (!r) setError("Card not found");
+      else setReport(r);
     } catch (err) {
       setError(err?.message || "Lookup failed");
     } finally {
@@ -122,7 +124,11 @@ export default function VerifyScreen() {
     setLogging(true);
     setError("");
     try {
-      await logInspectionOutcome(report.cardNumber, outcome, note.trim() || null);
+      await logInspectionOutcome(
+        report.cardNumber,
+        outcome,
+        note.trim() || null,
+      );
       setLoggedMsg(`Logged: ${outcome} on ${report.cardNumber}`);
       setNote("");
       setReport(null);
@@ -135,176 +141,351 @@ export default function VerifyScreen() {
     }
   }
 
-  // ---- Everything below this point is just what gets drawn on screen
-  // (JSX — it looks like HTML mixed into JavaScript). The logic that
-  // decides WHAT to show/do already happened above.
+  async function handleInputChange(e) {
+    const value = e.target.value.toUpperCase();
+    setCardNumber(value);
+
+    const myReq = ++suggestReq.current;
+    if (value.length >= 3) {
+      try {
+        const results = await searchCardNumbers(value);
+        if (myReq === suggestReq.current) setSuggestions(results || []);
+      } catch {
+        if (myReq === suggestReq.current) setSuggestions([]);
+      }
+    } else {
+      setSuggestions([]);
+    }
+  }
+
+  // Blocking is one database call (block_card). The database checks the role,
+  // changes the status, writes the audit entry and sends the notifications.
+  async function handleBlockCard() {
+    if (!report?.cardNumber) return;
+    setBusy(true);
+    setError("");
+    try {
+      await blockCard(report.cardNumber, note.trim() || null);
+      const fresh = await fetchReport(report.cardNumber);
+      if (fresh) setReport(fresh);
+      setLoggedMsg(`Card ${report.cardNumber} has been BLOCKED`);
+      setNote("");
+      loadRecent();
+    } catch (err) {
+      setError(err?.message || "Failed to block card");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleVerifyConcession(commuterId) {
+    if (!commuterId) return;
+    setBusy(true);
+    setError("");
+    try {
+      await verifyConcession(commuterId);
+      const fresh = await fetchReport(report.cardNumber);
+      if (fresh) setReport(fresh);
+      setLoggedMsg(`Concession verified for ${report.cardNumber}`);
+    } catch (err) {
+      setError(err?.message || "Failed to verify concession");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="px-5 pt-2">
-        {/* Page title */}
-        <header>
-          <h1 className="font-display text-xl font-bold text-ink-900">Handheld verifier</h1>
-          <p className="text-[13px] text-ink-900/50 mt-0.5">
-            Look up any Gold Card on board — read-only, privacy-safe (BR-08).
-          </p>
-        </header>
+      {/* Page title */}
+      <header>
+        <h1 className="font-display text-xl font-bold text-ink-900">
+          Handheld verifier
+        </h1>
+        <p className="text-[13px] text-ink-900/50 mt-0.5">
+          Look up any Gold Card on board — read-only, privacy-safe (BR-08).
+        </p>
+      </header>
 
-        {/* The card-number search box + "Look up" button. Submitting this
-            form runs the lookup() function defined above. */}
-        <form onSubmit={lookup} className="mt-5 flex gap-2">
+      {/* Card-number search box + "Look up" button */}
+      <form onSubmit={lookup} className="mt-5 flex gap-2">
+        <div className="relative flex-1">
           <input
             value={cardNumber}
-            onChange={(e) => setCardNumber(e.target.value.toUpperCase())}
+            onChange={handleInputChange}
             placeholder="GW-XXXX-XXXX"
-            className="flex-1 rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3.5 font-mono text-[15px] tracking-wider text-ink-900 placeholder:text-ink-900/25 outline-none focus:border-gold-400/60"
+            className="w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-3.5 font-mono text-[15px] tracking-wider text-ink-900 placeholder:text-ink-900/25 outline-none focus:border-gold-400/60"
           />
-          <button
-            type="submit"
-            disabled={busy || !cardNumber.trim()}
-            className="btn-gold rounded-xl px-5 py-3.5 text-[13px] disabled:opacity-50"
-          >
-            {busy ? "…" : "Look up"}
-          </button>
-        </form>
+          {suggestions.length > 0 && (
+            <ul className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-ink-900/10 bg-white shadow-lg z-10">
+              {suggestions.map((s) => (
+                <li
+                  key={s.card_number}
+                  onClick={() => {
+                    setCardNumber(s.card_number);
+                    setSuggestions([]);
+                  }}
+                  className="px-4 py-2 text-[13px] font-mono text-ink-900 cursor-pointer hover:bg-cream-200 flex justify-between"
+                >
+                  <span>{s.card_number}</span>
+                  <span
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusStyle(s.status)}`}
+                  >
+                    {s.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-        {/* Error / success banners — only show up when there's actually
-            something in the `error` or `loggedMsg` state above. */}
-        {error && (
-          <p role="alert" className="mt-3 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-[12px] text-red-600">
-            {error}
-          </p>
-        )}
-        {loggedMsg && (
-          <p role="status" className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[12px] text-emerald-700">
-            ✓ {loggedMsg}
-          </p>
-        )}
+        <button
+          type="submit"
+          disabled={busy || !cardNumber.trim()}
+          className="btn-gold rounded-xl px-5 py-3.5 text-[13px] disabled:opacity-50"
+        >
+          {busy ? "…" : "Look up"}
+        </button>
+      </form>
 
-        {/* The card report card — only appears once `report` has data in
-            it (i.e. after a successful lookup). Everything inside here is
-            exactly what the database's lookup_card_for_inspection()
-            function returned, just laid out nicely. */}
-        {report && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 rounded-2xl border border-ink-900/10 bg-white p-5"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-[15px] font-bold tracking-wider text-gold-700">{report.cardNumber}</p>
-                <p className="text-[12px] text-ink-900/50 mt-0.5">
-                  {/* Privacy note: the database deliberately only ever sends back
-                      the owner's first name + surname initial (e.g. "Thandi D."),
-                      never full contact details — see lookup_card_for_inspection()
-                      in the SQL for where that privacy limit is enforced. */}
-                  {report.registered ? `Registered · ${report.ownerName || "owner"}` : "Unregistered card"}
-                </p>
-              </div>
-              <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wider ${
-                report.status === "ACTIVE" ? "border-emerald-400/30 text-emerald-700 bg-emerald-50" : "border-ink-900/15 text-ink-900/55"
-              }`}>
+      {/* Error / success banners */}
+      {error && (
+        <p
+          role="alert"
+          className="mt-3 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-[12px] text-red-600"
+        >
+          {error}
+        </p>
+      )}
+      {loggedMsg && (
+        <p
+          role="status"
+          className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[12px] text-emerald-700"
+        >
+          ✓ {loggedMsg}
+        </p>
+      )}
+
+      {/* The card report — appears after a successful lookup */}
+      {report && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 rounded-2xl border border-ink-900/10 bg-white p-5"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-mono text-[15px] font-bold tracking-wider text-gold-700">
+                {report.cardNumber}
+              </p>
+              <p className="text-[12px] text-ink-900/50 mt-0.5">
+                {report.registered
+                  ? `Registered · ${report.ownerName || "owner"}`
+                  : "Unregistered card"}
+              </p>
+            </div>
+            <div className="flex items-center">
+              <span
+                className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wider ${
+                  report.status === "ACTIVE"
+                    ? "border-emerald-400/30 text-emerald-700 bg-emerald-50"
+                    : report.status === "BLOCKED"
+                      ? "border-red-400/30 text-red-700 bg-red-50"
+                      : "border-ink-900/15 text-ink-900/55"
+                }`}
+              >
                 {report.status}
               </span>
+              {BLOCKABLE.includes(report.status) && (
+                <button
+                  type="button"
+                  onClick={() => setShowBlockConfirm(true)}
+                  disabled={busy}
+                  className="ml-3 rounded-lg bg-red-500 px-3 py-1 text-[11px] font-bold text-white hover:brightness-110 disabled:opacity-50"
+                >
+                  Block Card
+                </button>
+              )}
             </div>
+          </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Stat label="JOURNEYS LEFT" value={report.journeysRemaining ?? "—"} />
-              <Stat label="CONCESSION" value={report.concessionType && report.concessionType !== "NONE" ? `${report.concessionType}${report.concessionVerified ? " ✓" : " (unverified)"}` : "—"} />
-            </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Stat
+              label="JOURNEYS LEFT"
+              value={report.journeysRemaining ?? "—"}
+            />
+            <Stat
+              label="CONCESSION"
+              value={
+                report.concessionType && report.concessionType !== "NONE"
+                  ? `${report.concessionType}${report.concessionVerified ? " ✓" : " (unverified)"}`
+                  : "—"
+              }
+            />
+          </div>
 
-            {report.loadedProducts?.length > 0 && (
-              <div className="mt-4">
-                <p className="eyebrow text-ink-900/40">LOADED PRODUCTS</p>
-                <div className="mt-2 flex flex-col gap-1.5">
-                  {report.loadedProducts.map((p) => (
-                    <div key={p.productCode + (p.routeCode || "")} className="flex items-center justify-between rounded-lg bg-cream-300 px-3 py-2 text-[12px]">
-                      <span className="font-semibold text-ink-900/85">{p.productCode}{p.routeCode ? ` · ${p.routeCode}` : ""}</span>
-                      <span className="text-ink-900/50">{p.journeysTotal - p.journeysUsed} left · to {p.validTo}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {report.concessionType &&
+            report.concessionType !== "NONE" &&
+            !report.concessionVerified && (
+              <button
+                type="button"
+                onClick={() => handleVerifyConcession(report.commuterId)}
+                disabled={busy}
+                className="mt-2 rounded-lg bg-blue-500 px-3 py-1 text-[11px] font-bold text-white hover:brightness-110 disabled:opacity-50"
+              >
+                Verify Concession
+              </button>
             )}
 
-            {report.recentInspections?.length > 0 && (
-              <p className="mt-3 text-[11px] text-ink-900/40">
-                Past inspections: {report.recentInspections.map((i) => `${i.outcome} (${new Date(i.at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })})`).join(" · ")}
-              </p>
-            )}
-
-            {/* Note box + the 5 outcome buttons. Tapping any outcome button
-                calls log(outcome) defined above, which is what actually
-                saves the inspection to the database. */}
+          {report.loadedProducts?.length > 0 && (
             <div className="mt-4">
-              <input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Optional note for the inspection record"
-                maxLength={NOTE_MAX}
-                className="w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-2.5 text-[12.5px] text-ink-900 placeholder:text-ink-900/30 outline-none focus:border-gold-400/60"
-              />
-              <span className="mt-1 block text-right text-[10px] text-ink-900/30">{note.length}/{NOTE_MAX}</span>
-              <p className="eyebrow text-ink-900/40 mt-4 mb-2">LOG OUTCOME</p>
-              <div className="flex flex-wrap gap-2">
-                {OUTCOMES.map((o) => (
-                  <button
-                    key={o.code}
-                    type="button"
-                    disabled={logging}
-                    onClick={() => log(o.code)}
-                    className={`rounded-xl ${o.cls} px-3.5 py-2.5 text-[12px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-50`}
+              <p className="eyebrow text-ink-900/40">LOADED PRODUCTS</p>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {report.loadedProducts.map((p) => (
+                  <div
+                    key={p.productCode + (p.routeCode || "") + p.validTo}
+                    className="flex items-center justify-between rounded-lg bg-cream-300 px-3 py-2 text-[12px]"
                   >
-                    {o.label}
-                  </button>
+                    <span className="font-semibold text-ink-900/85">
+                      {p.productCode}
+                      {p.routeCode ? ` · ${p.routeCode}` : ""}
+                    </span>
+                    <span className="text-ink-900/50">
+                      {p.journeysTotal - p.journeysUsed} left · to {p.validTo}
+                    </span>
+                  </div>
                 ))}
               </div>
+              {/* Manual journey deduction (validator-failure fallback, with a
+                  required reason) gets added here once its database function exists. */}
             </div>
-          </motion.div>
-        )}
+          )}
 
-        {/* "Your recent lookups" — a shortcut list at the bottom of the
-            screen. Tapping one of these just re-fills the search box with
-            that card number (it doesn't look it up automatically — the
-            inspector still has to press "Look up"). This list comes from
-            fetchMyRecentInspections(), which only returns THIS inspector's
-            own past lookups, not the whole team's (that fuller, shared
-            history lives on the separate "History" tab / screen —
-            see InspectionHistoryScreen.jsx). */}
-        {recent.length > 0 && (
-          <div className="mt-6">
-            <p className="eyebrow text-ink-900/40 mb-2">YOUR RECENT LOOKUPS</p>
-            <div className="flex flex-col gap-1.5">
-              {recent.map((r) => (
+          {report.recentInspections?.length > 0 && (
+            <p className="mt-3 text-[11px] text-ink-900/40">
+              Past inspections:{" "}
+              {report.recentInspections
+                .map(
+                  (i) =>
+                    `${i.outcome} (${new Date(i.at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })})`,
+                )
+                .join(" · ")}
+            </p>
+          )}
+
+          {/* Note box + the 5 outcome buttons */}
+          <div className="mt-4">
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Optional note for the inspection record"
+              maxLength={NOTE_MAX}
+              className="w-full rounded-xl border border-ink-900/10 bg-cream-200 px-4 py-2.5 text-[12.5px] text-ink-900 placeholder:text-ink-900/30 outline-none focus:border-gold-400/60"
+            />
+            <span className="mt-1 block text-right text-[10px] text-ink-900/30">
+              {note.length}/{NOTE_MAX}
+            </span>
+            <p className="eyebrow text-ink-900/40 mt-4 mb-2">LOG OUTCOME</p>
+            <div className="flex flex-wrap gap-2">
+              {OUTCOMES.map((o) => (
                 <button
-                  key={r.id}
+                  key={o.code}
                   type="button"
-                  onClick={() => setCardNumber(r.card_number)}
-                  className="flex items-center justify-between rounded-xl border border-ink-900/10 bg-white px-4 py-2.5 text-[12px] hover:border-ink-900/20 transition-colors"
+                  disabled={logging}
+                  onClick={() => log(o.code)}
+                  className={`rounded-xl ${o.cls} px-3.5 py-2.5 text-[12px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-50`}
                 >
-                  <span className="font-mono text-ink-900/70">{r.card_number}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-ink-900/45">{new Date(r.at).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${r.outcome === "VALID" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                      {r.outcome}
-                    </span>
-                  </span>
+                  {o.label}
                 </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </motion.div>
+      )}
 
+      {/* Shortcut list of recent lookups. Tapping one re-fills the search box. */}
+      {recent.length > 0 && (
+        <div className="mt-6">
+          <p className="eyebrow text-ink-900/40 mb-2">YOUR RECENT LOOKUPS</p>
+          <div className="flex flex-col gap-1.5">
+            {recent.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setCardNumber(r.card_number)}
+                className="flex items-center justify-between rounded-xl border border-ink-900/10 bg-white px-4 py-2.5 text-[12px] hover:border-ink-900/20 transition-colors"
+              >
+                <span className="font-mono text-ink-900/70">
+                  {r.card_number}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="text-ink-900/45">
+                    {new Date(r.at).toLocaleTimeString("en-ZA", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      r.outcome === "VALID"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {r.outcome}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Block confirmation dialog. It lives at the top level of the screen
+          (not inside the recent-lookups list) so it always opens. */}
+      {showBlockConfirm && report && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-[300px]">
+            <h2 className="text-[14px] font-bold text-ink-900 mb-3">
+              Confirm Block
+            </h2>
+            <p className="text-[12px] text-ink-900/70 mb-4">
+              Are you sure you want to block card{" "}
+              <span className="font-mono">{report.cardNumber}</span>?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBlockConfirm(false)}
+                className="rounded-lg border border-ink-900/20 px-3 py-1 text-[12px] text-ink-900 hover:bg-cream-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowBlockConfirm(false);
+                  await handleBlockCard();
+                }}
+                className="rounded-lg bg-red-500 px-3 py-1 text-[12px] font-bold text-white hover:brightness-110"
+              >
+                Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-// A small reusable "label + big number" box, used twice above
-// (JOURNEYS LEFT and CONCESSION). Just a display helper, no logic.
+// A small reusable "label + big number" box.
 function Stat({ label, value }) {
   return (
     <div className="rounded-xl bg-cream-300 px-3.5 py-3">
       <p className="eyebrow text-ink-900/40">{label}</p>
-      <p className="font-display text-[16px] font-bold text-ink-900 mt-0.5 truncate">{value}</p>
+      <p className="font-display text-[16px] font-bold text-ink-900 mt-0.5 truncate">
+        {value}
+      </p>
     </div>
   );
 }

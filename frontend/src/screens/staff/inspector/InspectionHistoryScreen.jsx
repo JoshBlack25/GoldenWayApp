@@ -86,7 +86,9 @@ export default function InspectionHistoryScreen() {
   // browser from the already-downloaded `rows`, not a fresh database call.
   const flaggedToday = useMemo(() => {
     const today = new Date().toDateString();
-    return rows.filter((r) => r.outcome !== "VALID" && new Date(r.at).toDateString() === today).length;
+    return rows.filter(
+      (r) => r.outcome !== "VALID" && new Date(r.at).toDateString() === today,
+    ).length;
   }, [rows]);
 
   // ---- Below this point is just what gets drawn on screen. All the
@@ -94,16 +96,28 @@ export default function InspectionHistoryScreen() {
   return (
     <div className="px-5 pt-2">
       <header>
-        <h1 className="font-display text-xl font-bold text-ink-900">Inspection history</h1>
-        <p className="text-[13px] text-ink-900/50 mt-0.5">The full revenue-protection log — every inspector's outcomes.</p>
+        <h1 className="font-display text-xl font-bold text-ink-900">
+          Inspection history
+        </h1>
+        <p className="text-[13px] text-ink-900/50 mt-0.5">
+          The full revenue-protection log — every inspector's outcomes.
+        </p>
       </header>
 
       {flaggedToday > 0 && (
         <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-[12px] text-amber-700">
-          {flaggedToday} flagged card{flaggedToday === 1 ? "" : "s"} today (not VALID)
+          {flaggedToday} flagged card{flaggedToday === 1 ? "" : "s"} today (not
+          VALID)
         </p>
       )}
-      {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-[12px] text-red-600">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-[12px] text-red-600"
+        >
+          {error}
+        </p>
+      )}
 
       {/* The 3 filter tabs — clicking one just changes the `filter` state
           above, which changes what `filtered` contains, which changes
@@ -115,7 +129,9 @@ export default function InspectionHistoryScreen() {
             type="button"
             onClick={() => setFilter(f)}
             className={`rounded-full border px-3.5 py-1.5 text-[11px] font-bold tracking-wide transition-colors ${
-              filter === f ? "border-gold-500 bg-cream-100 text-ink-900" : "border-ink-900/10 bg-white text-ink-900/50"
+              filter === f
+                ? "border-gold-500 bg-cream-100 text-ink-900"
+                : "border-ink-900/10 bg-white text-ink-900/50"
             }`}
           >
             {f}
@@ -135,20 +151,36 @@ export default function InspectionHistoryScreen() {
             <div className="skeleton h-14 rounded-xl" />
           </>
         ) : filtered.length === 0 ? (
-          <p className="mt-4 text-center text-[12.5px] text-ink-900/40">No inspections logged yet.</p>
+          <p className="mt-4 text-center text-[12.5px] text-ink-900/40">
+            No inspections logged yet.
+          </p>
         ) : (
           filtered.map((r) => (
-            <div key={r.id} className="rounded-xl border border-ink-900/10 bg-white px-4 py-3">
+            <div
+              key={r.id}
+              className="rounded-xl border border-ink-900/10 bg-white px-4 py-3"
+            >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[13px] font-semibold text-ink-900/80 tracking-wide">{r.card_number}</span>
-                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${OUTCOME_PILL[r.outcome] || "bg-ink-900/10 text-ink-900/60"}`}>
+                <span className="font-mono text-[13px] font-semibold text-ink-900/80 tracking-wide">
+                  {r.card_number}
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${OUTCOME_PILL[r.outcome] || "bg-ink-900/10 text-ink-900/60"}`}
+                >
                   {r.outcome.replace("_", " ")}
                 </span>
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <p className="text-[11px] text-ink-900/45 truncate max-w-[70%]">{r.note || "—"}</p>
+                <p className="text-[11px] text-ink-900/45 truncate max-w-[70%]">
+                  {r.note || "—"}
+                </p>
                 <span className="text-[11px] text-ink-900/40">
-                  {new Date(r.at).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  {new Date(r.at).toLocaleString("en-ZA", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
               </div>
             </div>

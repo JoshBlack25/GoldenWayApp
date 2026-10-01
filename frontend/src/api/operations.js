@@ -509,6 +509,63 @@ export async function fetchMyRecentInspections(limit = 8) {
   return data || [];
 }
 
+// Auto-complete card number suggestions for VerifyScreen
+export async function searchCardNumbers(prefix) {
+  const { data, error } = await supabase
+    .from("gold_cards")
+    .select("card_number, status")   // only valid columns
+    .ilike("card_number", `${prefix}%`)
+    .limit(5);
+
+  if (error) {
+    console.error("Supabase error:", error);
+    return [];
+  }
+  return data;
+}
+
+// Block a card by setting its status to BLOCKED
+export async function blockCard(cardNumber, note = null) {
+  return rpc("block_card", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+    p_note: note,
+  });
+}
+
+// Deduct a journey or balance from a card
+export async function deductJourney(cardNumber, productCode, routeCode = null) {
+  return rpc("deduct_journey", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+    p_product_code: productCode,
+    p_route_code: routeCode,
+  });
+}
+
+// Top-up a card (e.g. add journeys or balance)
+export async function topUpCard(cardNumber, productCode, routeCode = null) {
+  return rpc("record_cash_sale", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+    p_product_code: productCode,
+    p_route_code: routeCode,
+  });
+}
+
+// Create a notification entry
+export async function createNotification(type, title, body, linkPath = null) {
+  const { error } = await supabase
+    .from("notifications")
+    .insert({
+      type,
+      title,
+      body,
+      link_path: linkPath,
+    });
+
+  if (error) throw toApiError(error);
+  return true;
+}
+
+
 // =====================================================================
 // Clerk kiosk (0008)
 // =====================================================================
