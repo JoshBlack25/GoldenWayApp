@@ -12,9 +12,16 @@ function toApiError(error, fallbackStatus = 400) {
   const message = error?.message || "Request failed";
   const code = error?.code;
   if (code === "42501" || /^FORBIDDEN/i.test(message)) {
-    return new ApiError(403, { error: "You don't have permission for that action." });
+    return new ApiError(403, {
+      error: "You don't have permission for that action.",
+    });
   }
-  if (code === "55000" || /already claimed|not PENDING|already resolved|owned by another/i.test(message)) {
+  if (
+    code === "55000" ||
+    /already claimed|not PENDING|already resolved|owned by another/i.test(
+      message,
+    )
+  ) {
     return new ApiError(409, { error: message });
   }
   return new ApiError(fallbackStatus, { error: message });
@@ -104,7 +111,10 @@ export function mapTicketMessage(m) {
     ticketId: m.ticket_id,
     from: m.sender === "COMMUTER" ? "user" : "agent",
     text: m.body,
-    time: new Date(m.sent_at).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }),
+    time: new Date(m.sent_at).toLocaleTimeString("en-ZA", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
     sentAt: m.sent_at,
     sender: m.sender,
   };
@@ -138,7 +148,11 @@ export async function fetchTicketMessages(ticketId) {
 }
 
 export async function sendCommuterMessage(ticketId, body) {
-  return rpc("add_ticket_message", { p_ticket_id: ticketId, p_sender: "COMMUTER", p_body: body });
+  return rpc("add_ticket_message", {
+    p_ticket_id: ticketId,
+    p_sender: "COMMUTER",
+    p_body: body,
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -157,7 +171,12 @@ export function subscribeTicketMessages(ticketId, onMessage) {
     .channel(`ticket-messages-${ticketId}`)
     .on(
       "postgres_changes",
-      { event: "INSERT", schema: "public", table: "ticket_messages", filter: `ticket_id=eq.${ticketId}` },
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "ticket_messages",
+        filter: `ticket_id=eq.${ticketId}`,
+      },
       (payload) => onMessage(mapTicketMessage(payload.new)),
     )
     .subscribe();
@@ -174,7 +193,12 @@ export function subscribeTicketMeta(ticketId, onUpdate) {
     .channel(`ticket-meta-${ticketId}`)
     .on(
       "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "support_tickets", filter: `id=eq.${ticketId}` },
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "support_tickets",
+        filter: `id=eq.${ticketId}`,
+      },
       (payload) => onUpdate(payload.new),
     )
     .subscribe();
@@ -199,6 +223,24 @@ export function subscribeAllTickets(onUpdate) {
   return () => supabase.removeChannel(channel);
 }
 
+/** Live runs across several routes at once — powers the Routes picker's
+ * status chips without one query per route. */
+export async function fetchLiveRunsForRoutes(routeCodes) {
+  if (!routeCodes?.length) return {};
+  const { data, error } = await supabase
+    .from("vehicle_runs")
+    .select("*")
+    .in("route_code", routeCodes)
+    .in("status", ["ON_TIME", "DELAYED", "BREAKDOWN", "DIVERTED"])
+    .order("started_at", { ascending: false });
+  if (error) throw toApiError(error);
+  const byRoute = {};
+  for (const row of data || []) {
+    if (!byRoute[row.route_code]) byRoute[row.route_code] = mapRun(row); // first = most recent per route
+  }
+  return byRoute;
+}
+
 // =====================================================================
 // Support — agent side (0009): queue, claim, reply, resolve, escalate
 // =====================================================================
@@ -221,12 +263,15 @@ export async function fetchTicketQueue() {
 }
 
 export const claimTicket = (id) => rpc("claim_ticket", { p_ticket_id: id });
-export const replyTicket = (id, body) => rpc("reply_ticket", { p_ticket_id: id, p_body: body });
+export const replyTicket = (id, body) =>
+  rpc("reply_ticket", { p_ticket_id: id, p_body: body });
 export const resolveTicket = (id) => rpc("resolve_ticket", { p_ticket_id: id });
-export const escalateTicket = (id, note) => rpc("escalate_ticket", { p_ticket_id: id, p_note: note || null });
+export const escalateTicket = (id, note) =>
+  rpc("escalate_ticket", { p_ticket_id: id, p_note: note || null });
 
 /** Agent heartbeat — call on console open and once a minute. */
-export const setAgentOnline = (online = true) => rpc("set_agent_online", { p_online: online });
+export const setAgentOnline = (online = true) =>
+  rpc("set_agent_online", { p_online: online });
 
 /**
  * My staff row (0011): phone + names for the agent profile page.
@@ -234,7 +279,9 @@ export const setAgentOnline = (online = true) => rpc("set_agent_online", { p_onl
  * camelCase shape the screens use.
  */
 export async function fetchMyStaffProfile() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) return null;
   const { data, error } = await supabase
     .from("staff")
@@ -337,7 +384,9 @@ export const reportRunStatus = (runId, status, delayMinutes = 0, note = null) =>
 // =====================================================================
 
 export const lookupCardForInspection = (cardNumber) =>
-  rpc("lookup_card_for_inspection", { p_card_number: cardNumber.trim().toUpperCase() });
+  rpc("lookup_card_for_inspection", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+  });
 
 export const logInspectionOutcome = (cardNumber, outcome, note = null) =>
   rpc("log_inspection_outcome", {
@@ -356,6 +405,63 @@ export async function fetchRecentInspections(limit = 15) {
   return data || [];
 }
 
+// Auto-complete card number suggestions for VerifyScreen
+export async function searchCardNumbers(prefix) {
+  const { data, error } = await supabase
+    .from("gold_cards")
+    .select("card_number, status")   // only valid columns
+    .ilike("card_number", `${prefix}%`)
+    .limit(5);
+
+  if (error) {
+    console.error("Supabase error:", error);
+    return [];
+  }
+  return data;
+}
+
+// Block a card by setting its status to BLOCKED
+export async function blockCard(cardNumber, note = null) {
+  return rpc("block_card", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+    p_note: note,
+  });
+}
+
+// Deduct a journey or balance from a card
+export async function deductJourney(cardNumber, productCode, routeCode = null) {
+  return rpc("deduct_journey", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+    p_product_code: productCode,
+    p_route_code: routeCode,
+  });
+}
+
+// Top-up a card (e.g. add journeys or balance)
+export async function topUpCard(cardNumber, productCode, routeCode = null) {
+  return rpc("record_cash_sale", {
+    p_card_number: cardNumber.trim().toUpperCase(),
+    p_product_code: productCode,
+    p_route_code: routeCode,
+  });
+}
+
+// Create a notification entry
+export async function createNotification(type, title, body, linkPath = null) {
+  const { error } = await supabase
+    .from("notifications")
+    .insert({
+      type,
+      title,
+      body,
+      link_path: linkPath,
+    });
+
+  if (error) throw toApiError(error);
+  return true;
+}
+
+
 // =====================================================================
 // Clerk kiosk (0008)
 // =====================================================================
@@ -367,7 +473,11 @@ export const recordCashSale = (cardNumber, productCode, routeCode) =>
     p_route_code: routeCode,
   });
 
-export const clerkIssueCard = (idNumber, routeCode = null, productCode = null) =>
+export const clerkIssueCard = (
+  idNumber,
+  routeCode = null,
+  productCode = null,
+) =>
   rpc("clerk_issue_card", {
     p_id_number: idNumber.replace(/\s/g, ""),
     p_route_code: routeCode,
@@ -375,7 +485,9 @@ export const clerkIssueCard = (idNumber, routeCode = null, productCode = null) =
   });
 
 export const clerkReplaceLostCard = (oldCardNumber) =>
-  rpc("clerk_replace_lost_card", { p_old_card_number: oldCardNumber.trim().toUpperCase() });
+  rpc("clerk_replace_lost_card", {
+    p_old_card_number: oldCardNumber.trim().toUpperCase(),
+  });
 
 export async function fetchMyKioskSalesToday() {
   const startOfDay = new Date();
@@ -448,7 +560,9 @@ export async function fetchLiveRuns(routeCode) {
 export async function fetchPendingConcessions() {
   const { data, error } = await supabase
     .from("commuters")
-    .select("id, first_name, surname, email, concession_type, concession_verified_at, created_at")
+    .select(
+      "id, first_name, surname, email, concession_type, concession_verified_at, created_at",
+    )
     .in("concession_type", ["STUDENT", "PENSIONER"])
     .is("concession_verified_at", null)
     .order("created_at", { ascending: true });
@@ -470,7 +584,8 @@ export async function fetchRecentVerifiedConcessions(limit = 5) {
 }
 
 /** BR-06 — stamp the claim verified; triggers the commuter notification. */
-export const verifyConcession = (commuterId) => rpc("verify_concession", { p_commuter_id: commuterId });
+export const verifyConcession = (commuterId) =>
+  rpc("verify_concession", { p_commuter_id: commuterId });
 
 // =====================================================================
 // Clerk — dashboard (Sprint 2 K1)
@@ -528,7 +643,9 @@ export async function fetchKioskActivityToday(limit = 40) {
   startOfDay.setHours(0, 0, 0, 0);
   const { data, error } = await supabase
     .from("top_up_orders")
-    .select("id, card_number, product_code, amount_cents, receipt_reference, created_at")
+    .select(
+      "id, card_number, product_code, amount_cents, receipt_reference, created_at",
+    )
     .gte("created_at", startOfDay.toISOString())
     .eq("status", "PAID")
     .order("created_at", { ascending: false })

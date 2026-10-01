@@ -10,14 +10,17 @@ import ForgotPasswordScreen from "./screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "./screens/auth/ResetPasswordScreen";
 import StaffSignupScreen from "./screens/auth/StaffSignupScreen";
 import AccountCreatedScreen from "./screens/auth/AccountCreatedScreen";
+import CheckEmailScreen from "./screens/auth/CheckEmailScreen";
 import NotFoundScreen from "./screens/NotFoundScreen";
 import DashboardLayout from "./layout/DashboardLayout";
 import StaffLayout from "./layout/StaffLayout";
+import StaffCompleteSignupScreen from "./screens/auth/StaffCompleteSignupScreen";
 
 // Commuter surfaces
 import HomeScreen from "./screens/commuter/home/HomeScreen";
 import TimetableScreen from "./screens/commuter/home/TimetableScreen";
-import Route42Screen from "./screens/commuter/home/Route42Screen";
+import RoutesScreen from "./screens/commuter/home/RoutesScreen";
+import RouteDetailScreen from "./screens/commuter/home/RouteDetailScreen";
 import SupportScreen from "./screens/commuter/home/SupportScreen";
 import LoadtripsScreen from "./screens/commuter/LoadTrips/LoadtripsScreen";
 import CardScreen from "./screens/commuter/Card/CardScreen";
@@ -30,9 +33,12 @@ import UpdateProfileScreen from "./screens/commuter/Profile/UpdateProfileScreen"
 import NotificationsScreen from "./screens/commuter/Notifications/NotificationsScreen";
 
 // Staff console — shared + per-role (one folder per team lane)
+import InspectionHistoryScreen from "./screens/staff/inspector/InspectionHistoryScreen";
 import StaffHomeScreen from "./screens/staff/shared/StaffHomeScreen";
 import OnboardingScreen from "./screens/staff/admin/OnboardingScreen";
 import TeamScreen from "./screens/staff/admin/TeamScreen";
+import CatalogScreen from "./screens/staff/admin/CatalogScreen";
+import AlertsScreen from "./screens/staff/admin/AlertsScreen";
 import VerifyScreen from "./screens/staff/inspector/VerifyScreen";
 import RunsScreen from "./screens/staff/driver/RunsScreen";
 import InboxScreen from "./screens/staff/agent/InboxScreen";
@@ -53,7 +59,8 @@ const commuterTree = (
   >
     <Route path="/home" element={<HomeScreen />} />
     <Route path="/timetable" element={<TimetableScreen />} />
-    <Route path="/route-42" element={<Route42Screen />} />
+    <Route path="/routes" element={<RoutesScreen />} />
+    <Route path="/routes/:code" element={<RouteDetailScreen />} />
     <Route path="/support" element={<SupportScreen />} />
     <Route path="/load-trips" element={<LoadtripsScreen />} />
     <Route path="/card" element={<CardScreen />} />
@@ -73,13 +80,17 @@ const commuterTree = (
  * shared chrome lives in screens/staff/shared/ + layout/StaffLayout.
  */
 const staffScreens = {
+  inspections: { element: <InspectionHistoryScreen />, roles: ["INSPECTOR", "ADMIN"] },
   onboarding: { element: <OnboardingScreen />, roles: ["ADMIN"] },
   team: { element: <TeamScreen />, roles: ["ADMIN"] },
-  catalog: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
-  alerts: { element: null, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  catalog: { element: <CatalogScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
+  alerts: { element: <AlertsScreen />, roles: ["ADMIN"] }, // Matthew's lane (S2-D4)
   verify: { element: <VerifyScreen />, roles: ["INSPECTOR", "ADMIN"] },
   runs: { element: <RunsScreen />, roles: ["DRIVER", "ADMIN"] },
-  timetable: { element: <TimetableScreen hideCta />, roles: ["DRIVER", "ADMIN"] },
+  timetable: {
+    element: <TimetableScreen hideCta />,
+    roles: ["DRIVER", "ADMIN"],
+  },
   inbox: { element: <InboxScreen />, roles: ["AGENT", "ADMIN"] },
   chats: { element: <ChatScreen />, roles: ["AGENT", "ADMIN"] },
   kiosk: { element: <KioskScreen />, roles: ["CLERK", "ADMIN"] },
@@ -100,7 +111,12 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
           <Route path="/reset-password" element={<ResetPasswordScreen />} />
           <Route path="/staff-signup" element={<StaffSignupScreen />} />
+          <Route
+            path="/staff/complete-signup"
+            element={<StaffCompleteSignupScreen />}
+          />
           <Route path="/account-created" element={<AccountCreatedScreen />} />
+          <Route path="/check-email" element={<CheckEmailScreen />} />
 
           {/* Staff console: /staff + role tools nested under StaffLayout */}
           <Route
@@ -130,7 +146,14 @@ export default function App() {
               ),
             )}
             {/* Every staff member gets a profile page (Home-first nav skeleton) */}
-            <Route path="profile" element={<ProtectedRoute staff><StaffProfileScreen /></ProtectedRoute>} />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute staff>
+                  <StaffProfileScreen />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           {commuterTree}
@@ -144,12 +167,22 @@ export default function App() {
 
 function ComingSoon({ slug }) {
   return (
-    <div className="min-h-dvh text-white flex items-center justify-center" style={{ background: "linear-gradient(180deg, #0b1526, #12203d)" }}>
+    <div
+      className="min-h-dvh text-white flex items-center justify-center"
+      style={{ background: "linear-gradient(180deg, #0b1526, #12203d)" }}
+    >
       <div className="text-center">
         <p className="text-3xl mb-2">🚧</p>
         <h2 className="font-display text-lg font-bold">/staff/{slug}</h2>
-        <p className="text-[13px] text-white/50 mt-1">Reserved lane — this module is on the Sprint 2 board.</p>
-        <a href="/staff" className="inline-block mt-4 text-[12px] font-semibold text-gold-300 underline underline-offset-2">Back to console</a>
+        <p className="text-[13px] text-white/50 mt-1">
+          Reserved lane — this module is on the Sprint 2 board.
+        </p>
+        <a
+          href="/staff"
+          className="inline-block mt-4 text-[12px] font-semibold text-gold-300 underline underline-offset-2"
+        >
+          Back to console
+        </a>
       </div>
     </div>
   );

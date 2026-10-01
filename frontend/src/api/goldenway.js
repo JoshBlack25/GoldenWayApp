@@ -95,11 +95,36 @@ export async function registerCommuter(payload) {
     dateOfBirth,
     idNumber,
     concessionType,
+    existingCardNumber,
   } = payload;
+
+  // Pre-check the duplicate-ID case before touching auth.users at all.
+  const { data: idAvailable, error: checkErr } = await supabase.rpc(
+    "check_id_number_available",
+    { p_id_number: idNumber },
+  );
+  if (!checkErr && idAvailable === false) {
+    throw new ApiError(409, {
+      idNumber: "An account already exists with this ID number",
+    });
+  }
 
   const { error: signUpError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/account-created`,
+      data: {
+        account_type: "COMMUTER",
+        first_name: firstName,
+        surname,
+        phone,
+        date_of_birth: dateOfBirth,
+        id_number: idNumber,
+        concession_type: concessionType,
+        pending_card_number: existingCardNumber || null,
+      },
+    },
   });
   if (signUpError) {
     if (/already registered|already exists/i.test(signUpError.message)) {
@@ -107,22 +132,14 @@ export async function registerCommuter(payload) {
         email: "An account already exists with this email",
       });
     }
+    const fieldMatch = /^([a-zA-Z]+):\s*(.+)$/.exec(signUpError.message);
+    if (fieldMatch) throw new ApiError(400, { [fieldMatch[1]]: fieldMatch[2] });
     throw new ApiError(400, { error: signUpError.message });
   }
 
-  // If email confirmation is enabled in the Supabase project, signUp()
-  // won't return an active session and the RPC below (which reads
-  // auth.uid()) will fail. See README "Email confirmation" note.
-  const row = await rpc("register_commuter", {
-    p_first_name: firstName,
-    p_surname: surname,
-    p_phone: phone,
-    p_date_of_birth: dateOfBirth,
-    p_id_number: idNumber,
-    p_concession_type: concessionType,
-  });
-
-  return mapCommuterRow(row);
+  // No session yet — Confirm Email is on. The commuters row is created
+  // server-side by the trigger; nothing to return until they confirm.
+  return null;
 }
 
 export async function loginCommuter(email, password) {
@@ -226,8 +243,11 @@ export async function createTopupOrder(
   return { id: row.id, status: row.status };
 }
 
-export async function payTopupOrder(orderId) {
-  const row = await rpc("pay_topup_order", { p_order_id: orderId });
+export async function payTopupOrder(orderId, paymentMethodId = null) {
+  const row = await rpc("pay_topup_order", {
+    p_order_id: orderId,
+    p_payment_method_id: paymentMethodId,
+  });
   return {
     id: row.id,
     productCode: row.product_code,

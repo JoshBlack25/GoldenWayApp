@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { detectCardBrand } from "../data/loadTripsData";
+import { luhnValid } from "../../../../utils/saId";
 
-export default function AddCardDrawer({ open, onClose, onSave }) {
+export default function AddCardDrawer({ open, onClose, onSave, error = "" }) {
   const [holder, setHolder] = useState("");
   const [number, setNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
 
-  const brand = detectCardBrand(number);
+  const digits = number.replace(/\D/g, "");
+  const [expMonth, expYear] = (expiry || "").split("/").map((s) => s.trim());
   const canSave =
     holder.trim() &&
-    number.replace(/\D/g, "").length >= 12 &&
-    expiry &&
+    digits.length >= 13 &&
+    luhnValid(digits) &&
+    /^(0?[1-9]|1[0-2])$/.test(expMonth || "") &&
+    /^\d{2,4}$/.test(expYear || "") &&
     cvv.length >= 3;
 
   function formatCardNumber(value) {
@@ -33,11 +36,13 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
   function handleSave(e) {
     e.preventDefault();
     if (!canSave) return;
+    // PCI: only safe tokenized fields leave this component — the full PAN
+    // and CVV are discarded here; the DB stores brand + last4 + expiry.
     onSave({
-      id: `card-${Date.now()}`,
-      brand,
-      last4: number.replace(/\D/g, "").slice(-4),
-      expiry,
+      holderName: holder.trim(),
+      number: digits,
+      expMonth: parseInt(expMonth, 10),
+      expYear: expYear.length === 2 ? 2000 + parseInt(expYear, 10) : parseInt(expYear, 10),
     });
     setHolder("");
     setNumber("");
@@ -71,6 +76,15 @@ export default function AddCardDrawer({ open, onClose, onSave }) {
             <p className="text-slate-500 text-[13px] mt-1">
               Securely add a payment method to your account.
             </p>
+
+            {error && (
+              <div
+                role="alert"
+                className="mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-[13px] text-red-700"
+              >
+                {error}
+              </div>
+            )}
 
             {/* Live card preview */}
             <div className="mt-5 rounded-2xl bg-gradient-to-br from-navy-900 to-navy-950 px-5 py-5 text-cream-50 relative overflow-hidden">

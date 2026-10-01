@@ -13,6 +13,14 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { productLabel } from "../utils/productLabels";
 import { clearFareCache } from "../screens/commuter/LoadTrips/data/loadTripsData";
+import {
+  fetchPaymentMethods,
+  addPaymentMethod,
+  deletePaymentMethod,
+  setDefaultPaymentMethod,
+} from "../api/paymentMethods";
+import { fetchLiveRuns } from "../api/operations";
+import { isProductLive, daysUntil } from "../utils/myRoutes";
 
 /**
  * Real data for the whole dashboard, backed directly by Supabase.
@@ -52,18 +60,18 @@ function metaFor(iso) {
 
 /** Newest valid loaded product → the "pass" card the UI shows. */
 function derivePass(card) {
-  const today = new Date();
   const products = (card?.loadedProducts || [])
-    .filter((p) => new Date(p.validTo) >= today)
+    .filter((p) => isProductLive(p))
     .sort((a, b) => new Date(b.validTo) - new Date(a.validTo));
   if (!products.length) {
-    return { label: "No active pass — top up to ride", expiryDays: 0, active: false };
+    return {
+      label: "No active pass — top up to ride",
+      expiryDays: 0,
+      active: false,
+    };
   }
   const p = products[0];
-  const days = Math.max(
-    0,
-    Math.ceil((new Date(p.validTo) - today) / 86400000),
-  );
+  const days = Math.max(0, daysUntil(p.validTo));
   return {
     label: productLabel(p.productCode),
     expiryDays: days,
@@ -102,7 +110,7 @@ function orderToTx(o) {
     title: `${productLabel(o.productCode)} loaded${o.routeCode ? ` · ${o.routeCode}` : ""}`,
     meta: metaFor(o.paidAt || o.createdAt),
     _at: o.paidAt || o.createdAt,
-    amount: `+${(o.amountCents / 100).toFixed(0)} Rides`,
+    amount: `R${(o.amountCents / 100).toFixed(2)}`,
     negative: false,
   };
 }
@@ -119,9 +127,22 @@ export default function TripProvider({ children }) {
   const pass = useMemo(() => derivePass(card), [card]);
   const passExpiresOn = useMemo(() => {
     const products = (card?.loadedProducts || [])
-      .filter((p) => new Date(p.validTo) >= new Date())
+      .filter((p) => isProductLive(p))
       .sort((a, b) => new Date(b.validTo) - new Date(a.validTo));
     return products[0]?.validTo || null;
+  }, [card]);
+  // A live weekly/monthly pass (journeys_total = 0) → unlimited rides on its route.
+  const unlimitedPass = useMemo(() => {
+    const products = (card?.loadedProducts || [])
+      .filter((p) => p.journeysTotal === 0 && isProductLive(p))
+      .sort((a, b) => new Date(b.validTo) - new Date(a.validTo));
+    return products[0]
+      ? {
+          productCode: products[0].productCode,
+          routeCode: products[0].routeCode,
+          validTo: products[0].validTo,
+        }
+      : null;
   }, [card]);
 
   /** Load (or create+register) my card, then balance + history. */
@@ -157,31 +178,81 @@ export default function TripProvider({ children }) {
     } catch (err) {
       // Card load/create failed entirely (offline, backend down, RLS…) —
       // remember why so screens can show a retry instead of zero balance.
-      setLoadError(err?.message || "Could not load your card. Check your connection and try again.");
+      setLoadError(
+        err?.message ||
+          "Could not load your card. Check your connection and try again.",
+      );
     } finally {
       setCardBusy(false);
     }
   }, []);
+
+  // ---------------------------------------------------------------------
+  // Payment wallet (0016) — per-user saved methods, loaded on sign-in.
+  // ---------------------------------------------------------------------
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsBusy, setPaymentMethodsBusy] = useState(false);
+
+  const refreshPaymentMethods = useCallback(async () => {
+    setPaymentMethodsBusy(true);
+    try {
+      setPaymentMethods(await fetchPaymentMethods());
+    } catch {
+      setPaymentMethods([]);
+    } finally {
+      setPaymentMethodsBusy(false);
+    }
+  }, []);
+
+  const savePaymentMethod = useCallback(
+    async (methodInput) => {
+      const saved = await addPaymentMethod(methodInput);
+      await refreshPaymentMethods();
+      return saved;
+    },
+    [refreshPaymentMethods],
+  );
+
+  const removePaymentMethod = useCallback(
+    async (id) => {
+      await deletePaymentMethod(id);
+      await refreshPaymentMethods();
+    },
+    [refreshPaymentMethods],
+  );
+
+  const makeDefaultPaymentMethod = useCallback(
+    async (id) => {
+      await setDefaultPaymentMethod(id);
+      await refreshPaymentMethods();
+    },
+    [refreshPaymentMethods],
+  );
 
   // Load everything once signed in; re-runs on sign-in/out.
   useEffect(() => {
     let cancelled = false;
 
     async function loadIfSignedIn() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (cancelled || !session) return;
       await refreshTrips();
+      refreshPaymentMethods();
     }
     loadIfSignedIn();
 
     const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN") {
         refreshTrips();
+        refreshPaymentMethods();
       }
       if (event === "SIGNED_OUT") {
         setCard(null);
         setRides(0);
         setTransactions([]);
+        setPaymentMethods([]);
       }
     });
 
@@ -189,7 +260,7 @@ export default function TripProvider({ children }) {
       cancelled = true;
       subscription?.subscription?.unsubscribe();
     };
-  }, [refreshTrips]);
+  }, [refreshTrips, refreshPaymentMethods]);
 
   /** Register an existing unregistered card number to my account (BR-10). */
   const registerCard = useCallback(async (cardNumber) => {
@@ -207,8 +278,25 @@ export default function TripProvider({ children }) {
     async (title /* routeCode or label from the calling screen */) => {
       if (!card) throw new Error("No card — open the Card tab first");
       const routeCode = title || pass.productCode || "KHA-CPT";
-      const deduction = await tapJourney(card.cardNumber, routeCode, "GW-BUS-42", "VAL-01");
+      // Phase B: if a driver currently has an active run on this route,
+      // tap against THAT bus (real vehicle_runs row); otherwise fall back
+      // to the demo vehicle so the validator always has a target.
+      let busId = "GW-BUS-42";
+      try {
+        const live = await fetchLiveRuns(routeCode);
+        if (live?.length && live[0].busId) busId = live[0].busId;
+      } catch {
+        /* live-run lookup is best-effort; tap proceeds on the fallback */
+      }
+      const deduction = await tapJourney(
+        card.cardNumber,
+        routeCode,
+        busId,
+        "VAL-01",
+      );
       setTransactions((prev) => [deductionToTx(deduction), ...prev]);
+      // Re-read the authoritative balance from the backend (BR-07), so the
+      // UI never drifts from what the DB says the card holds.
       const journeys = await journeysRemaining(card.cardNumber);
       setRides(journeys);
       return deduction;
@@ -222,10 +310,20 @@ export default function TripProvider({ children }) {
    * Returns the PAID order (receiptReference included).
    */
   const addRides = useCallback(
-    async (count, title, passLabel, { productCode, routeCode, amountCents } = {}) => {
+    async (
+      count,
+      title,
+      passLabel,
+      { productCode, routeCode, amountCents, paymentMethodId } = {},
+    ) => {
       if (!card) throw new Error("No card — open the Card tab first");
-      const order = await createTopupOrder(card.cardNumber, productCode, routeCode, amountCents);
-      const paid = await payTopupOrder(order.id);
+      const order = await createTopupOrder(
+        card.cardNumber,
+        productCode,
+        routeCode,
+        amountCents,
+      );
+      const paid = await payTopupOrder(order.id, paymentMethodId);
       if (paid.status !== "PAID") {
         throw new Error("Payment was not approved");
       }
@@ -244,6 +342,7 @@ export default function TripProvider({ children }) {
       rides,
       pass,
       passExpiresOn,
+      unlimitedPass,
       transactions,
       deductRide,
       addRides,
@@ -253,11 +352,17 @@ export default function TripProvider({ children }) {
       refreshTrips,
       registerCard,
       purchase: addRides,
+      paymentMethods,
+      paymentMethodsBusy,
+      savePaymentMethod,
+      removePaymentMethod,
+      makeDefaultPaymentMethod,
     }),
     [
       rides,
       pass,
       passExpiresOn,
+      unlimitedPass,
       transactions,
       deductRide,
       addRides,
@@ -266,6 +371,11 @@ export default function TripProvider({ children }) {
       loadError,
       refreshTrips,
       registerCard,
+      paymentMethods,
+      paymentMethodsBusy,
+      savePaymentMethod,
+      removePaymentMethod,
+      makeDefaultPaymentMethod,
     ],
   );
 

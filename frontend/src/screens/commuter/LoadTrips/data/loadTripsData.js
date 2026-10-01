@@ -116,9 +116,4 @@ export function detectCardBrand(cardNumber) {
 
 export const MAX_SAVED_CARDS = 3;
 
-export const INITIAL_CARDS = [
-  { id: "card-1", brand: "Visa", last4: "4582", expiry: "08/26" },
-  { id: "card-2", brand: "Mastercard", last4: "8829", expiry: "03/27" },
-];
-
 export const GOLD_CARD = { label: "Gold Card", last4: "4821", brand: "Visa" };
