@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/auth";
 import { useTrips } from "../../../context/trip";
+import DeleteAccountModal from "../../../components/DeleteAccountModal";
 
 export default function ProfileScreen() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { rides, transactions } = useTrips();
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const name = user?.displayName || user?.email?.split("@")[0] || "Commuter";
   const firstName = user?.firstName || name.split(" ")[0];
@@ -197,21 +201,26 @@ export default function ProfileScreen() {
         </button>
       )}
 
-      {/* Deactivation */}
+      {/* Delete account */}
       <div className="mt-4 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-3.5">
         <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-red-600">
-          <AlertIcon /> ACCOUNT DEACTIVATION
+          <AlertIcon /> DELETE ACCOUNT
         </p>
         <p className="text-[11px] text-red-500/90 leading-relaxed mt-1.5">
-          Warning: By deactivating your account, you would have to contact the
-          customer service unit.
+          Permanently delete your account and personal data. Journeys left on
+          your card are lost. This cannot be undone.
         </p>
         <button
           type="button"
+          onClick={() => setShowDeleteModal(true)}
           className="text-[12px] font-semibold text-red-600 underline underline-offset-2 mt-2"
         >
-          Proceed with Deactivation
+          Delete my account
         </button>
+        <DeleteAccountModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+        />
       </div>
 
       {/* Logout */}

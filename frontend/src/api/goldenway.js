@@ -423,3 +423,35 @@ export async function fetchLiveAlerts() {
     effectiveTo: a.effective_to,
   }));
 }
+
+export async function deleteMyAccount(password) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new ApiError(401, { error: "No active session" });
+
+  // Re-authenticate: a stolen or left-open session shouldn't be enough.
+  const { error: reauth } = await supabase.auth.signInWithPassword({
+    email: session.user.email,
+    password,
+  });
+  if (reauth) throw new ApiError(401, { error: "Password is incorrect" });
+
+  await rpc("delete_my_account", {});
+  await supabase.auth.signOut({ scope: "local" }); // server session is already gone
+}
+
+export async function fetchDismissedAlertIds() {
+  const { data, error } = await supabase
+    .from("alert_dismissals")
+    .select("alert_id");
+  if (error) throw toApiError(error);
+  return (data || []).map((r) => r.alert_id);
+}
+
+export async function dismissAlert(alertId) {
+  const { error } = await supabase
+    .from("alert_dismissals")
+    .insert({ alert_id: alertId });
+  if (error && error.code !== "23505") throw toApiError(error); // already dismissed is fine
+}

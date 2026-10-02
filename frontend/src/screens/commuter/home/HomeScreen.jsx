@@ -10,6 +10,8 @@ import {
   fetchRoutesFromDb,
   fetchDepartures,
   serviceDayFor,
+  fetchDismissedAlertIds,
+  dismissAlert,
 } from "../../../api/goldenway";
 import { fetchLiveRunsForRoutes } from "../../../api/operations";
 import {
@@ -69,6 +71,30 @@ export default function HomeScreen() {
     [alerts, myRouteCodes],
   );
 
+  const [dismissed, setDismissed] = useState([]);
+
+  useEffect(() => {
+    fetchDismissedAlertIds()
+      .then(setDismissed)
+      .catch(() => {});
+  }, []);
+
+  // CRITICAL alerts (breakdowns) can't be hidden.
+  const visibleAlerts = useMemo(
+    () =>
+      relevantAlerts.filter(
+        (a) => a.severity === "CRITICAL" || !dismissed.includes(a.id),
+      ),
+    [relevantAlerts, dismissed],
+  );
+
+  function handleDismiss(id) {
+    setDismissed((d) => [...d, id]); // optimistic
+    dismissAlert(id).catch(() =>
+      setDismissed((d) => d.filter((x) => x !== id)),
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5 px-5 pb-6">
       <div>
@@ -82,29 +108,41 @@ export default function HomeScreen() {
       <TripLoadError />
 
       {/* Live service alerts that affect me */}
-      {relevantAlerts.length > 0 && (
-        <button
-          type="button"
-          onClick={() => navigate("/notifications")}
-          className="flex items-start gap-2.5 rounded-xl border border-brand-500/25 bg-brand-50 px-4 py-3 text-left"
-        >
-          <AlertIcon />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-bold tracking-wide text-brand-600">
-              SERVICE ALERT
+      {visibleAlerts.length > 0 && (
+        <div className="flex items-start gap-1 rounded-xl border border-brand-500/25 bg-brand-50 pl-4 pr-2 py-3">
+          <button
+            type="button"
+            onClick={() => navigate("/notifications")}
+            className="flex items-start gap-2.5 text-left min-w-0 flex-1"
+          >
+            <AlertIcon />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-bold tracking-wide text-brand-600">
+                SERVICE ALERT
+              </span>
+              <span className="block text-[12px] font-medium text-ink-900 truncate">
+                {visibleAlerts[0].title ||
+                  visibleAlerts[0].body ||
+                  "Service notice for your routes"}
+              </span>
             </span>
-            <span className="block text-[12px] font-medium text-ink-900 truncate">
-              {relevantAlerts[0].title ||
-                relevantAlerts[0].body ||
-                "Service notice for your routes"}
-            </span>
-          </span>
-          {relevantAlerts.length > 1 && (
-            <span className="text-[11px] font-semibold text-brand-600 shrink-0">
-              +{relevantAlerts.length - 1}
-            </span>
+            {visibleAlerts.length > 1 && (
+              <span className="text-[11px] font-semibold text-brand-600 shrink-0">
+                +{visibleAlerts.length - 1}
+              </span>
+            )}
+          </button>
+          {visibleAlerts[0].severity !== "CRITICAL" && (
+            <button
+              type="button"
+              aria-label="Dismiss alert"
+              onClick={() => handleDismiss(visibleAlerts[0].id)}
+              className="shrink-0 h-9 w-9 -my-1 rounded-full text-ink-900/50 hover:text-ink-900"
+            >
+              ✕
+            </button>
           )}
-        </button>
+        </div>
       )}
 
       {/* Rides remaining + pass — the "can I get to work" answer */}

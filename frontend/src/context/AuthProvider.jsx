@@ -5,6 +5,7 @@ import {
   fetchMyCommuterProfile,
   logoutCommuter,
   registerCommuter,
+  deleteMyAccount,
 } from "../api/goldenway";
 import { fetchMyProfileType, loginAny } from "../api/auth";
 import { ApiError } from "../api/client";
@@ -155,9 +156,22 @@ export default function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async (password) => {
+    await deleteMyAccount(password);
+    setUser(null);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, initializing, login, register, logout, setUser }),
-    [user, initializing, login, register, logout],
+    () => ({
+      user,
+      initializing,
+      login,
+      register,
+      logout,
+      deleteAccount,
+      setUser,
+    }),
+    [user, initializing, login, register, logout, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
