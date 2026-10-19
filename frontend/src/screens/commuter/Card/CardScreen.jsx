@@ -82,8 +82,8 @@ export default function CardScreen() {
             + {rides} Go Easy {rides === 1 ? "journey" : "journeys"}
           </p>
         )}
-        <p className="mt-2 text-[11px] font-semibold tracking-[0.14em] text-slate-500">
-          {pass.label.toUpperCase()}
+        <p className="mt-2 text-[11px] font-semibold text-slate-500">
+          {pass.label}
         </p>
         <p className="text-[13px] text-slate-500 mt-1">
           {pass.active ? expiresIn(pass.expiryDays) : "Top up to start riding"}
@@ -135,7 +135,7 @@ export default function CardScreen() {
             onClick={() => navigate("/history")}
             className="link-action text-[12px] font-semibold text-gold-600"
           >
-            VIEW ALL
+            View all
           </button>
         </div>
         <div className="flex flex-col gap-2.5">
@@ -174,8 +174,8 @@ function CardNumberRow({ cardNumber }) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-white border border-ink-900/5 px-4 py-3">
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold tracking-wide text-slate-500">
-          CARD NUMBER
+        <p className="text-[11px] font-medium text-slate-500">
+          Card number
         </p>
         <p className="font-display text-[15px] font-bold text-ink-900 tracking-wide">
           {shown ? cardNumber : `GW-••••-${cardNumber.slice(-4)}`}

@@ -67,8 +67,8 @@ export default function ProfileScreen() {
         }}
       >
         <div>
-          <p className="text-[9px] font-bold tracking-[0.18em] text-ink-900/70">
-            GOLDENWAY PASS
+          <p className="text-[11px] font-bold tracking-wide text-ink-900/70">
+            GoldenWay Pass
           </p>
           <p className="font-display text-[15px] font-bold text-ink-900 uppercase mt-0.5">
             {name}
@@ -80,14 +80,14 @@ export default function ProfileScreen() {
         </div>
         <div className="flex flex-col items-end gap-2">
           <QrIcon />
-          <span className="rounded-full bg-ink-900/85 px-2.5 py-0.5 text-[9px] font-bold tracking-wide text-gold-300">
-            ACTIVE
+          <span className="rounded-full bg-ink-900/85 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-gold-300">
+            Active
           </span>
         </div>
       </div>
 
       {/* Personal identity */}
-      <SectionTitle>PERSONAL IDENTITY</SectionTitle>
+      <SectionTitle>Personal identity</SectionTitle>
       <div className="rounded-2xl border border-ink-900/5 bg-white px-4 py-1 flex flex-col divide-y divide-ink-900/5">
         <DetailRow label="Name" value={firstName} />
         <DetailRow label="Surname" value={surname || "—"} />
@@ -108,15 +108,15 @@ export default function ProfileScreen() {
       </div>
 
       {/* Contact details */}
-      <SectionTitle>CONTACT DETAILS</SectionTitle>
+      <SectionTitle>Contact details</SectionTitle>
       <div className="flex flex-col gap-2.5">
         <div className="rounded-2xl border border-ink-900/5 bg-white px-4 py-3 flex items-center gap-3">
           <span className="h-9 w-9 rounded-full bg-cream-200 flex items-center justify-center shrink-0">
             <MailIcon />
           </span>
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-wide text-slate-500">
-              EMAIL ADDRESS
+            <p className="text-[11px] font-medium text-slate-500">
+              Email address
             </p>
             <p className="text-[13px] font-semibold text-ink-900 truncate">
               {user?.email || "johndoe@gmail.com"}
@@ -128,8 +128,8 @@ export default function ProfileScreen() {
             <PhoneIcon />
           </span>
           <div>
-            <p className="text-[10px] font-semibold tracking-wide text-slate-500">
-              PHONE NUMBER
+            <p className="text-[11px] font-medium text-slate-500">
+              Phone number
             </p>
             <p className="text-[13px] font-semibold text-ink-900">
               {user?.phone || "—"}
@@ -141,8 +141,8 @@ export default function ProfileScreen() {
       {/* Account status */}
       <div className="mt-4 rounded-2xl border border-ink-900/5 bg-white px-4 py-3.5 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold tracking-wide text-slate-500">
-            ACCOUNT STATUS
+          <p className="text-[11px] font-medium text-slate-500">
+            Account status
           </p>
           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-emerald-600 mt-1">
             <CheckCircleIcon />
@@ -164,15 +164,15 @@ export default function ProfileScreen() {
 
       {/* Ride history */}
       <div className="mt-4 flex items-center justify-between">
-        <h3 className="font-display text-[13px] font-bold tracking-wide text-ink-900">
-          RIDE HISTORY
+        <h3 className="font-display text-[15px] font-bold text-ink-900">
+          Ride history
         </h3>
         <button
           type="button"
           onClick={() => navigate("/history")}
-          className="text-[11px] font-semibold text-gold-600"
+          className="text-[12px] font-semibold text-gold-600 link-action"
         >
-          VIEW ALL
+          View all
         </button>
       </div>
       {lastRide && (
@@ -196,15 +196,15 @@ export default function ProfileScreen() {
             <span className="block text-[12px] font-semibold text-red-500">
               -1 Ride
             </span>
-            <span className="block text-[10px] text-slate-400">DONE</span>
+            <span className="block text-[11px] text-slate-400">Done</span>
           </span>
         </button>
       )}
 
       {/* Delete account */}
       <div className="mt-4 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-3.5">
-        <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-red-600">
-          <AlertIcon /> DELETE ACCOUNT
+        <p className="flex items-center gap-1.5 text-[12px] font-semibold text-red-600">
+          <AlertIcon /> Delete account
         </p>
         <p className="text-[11px] text-red-500/90 leading-relaxed mt-1.5">
           Permanently delete your account and personal data. Journeys left on
@@ -237,7 +237,7 @@ export default function ProfileScreen() {
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="text-[10px] font-bold tracking-[0.16em] text-slate-500 mt-5 mb-2">
+    <h3 className="text-[11px] font-semibold text-slate-500 mt-5 mb-2">
       {children}
     </h3>
   );
