@@ -142,19 +142,6 @@ export default function LoginScreen() {
           </motion.button>
         </form>
 
-        <div className="flex items-center gap-3 my-6">
-          <div className="h-px flex-1 bg-ink-900/10" />
-          <span className="text-[11px] tracking-wide text-slate-400">
-            OR CONTINUE WITH
-          </span>
-          <div className="h-px flex-1 bg-ink-900/10" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <SocialButton label="Google" icon={<GoogleIcon />} />
-          <SocialButton label="Apple" icon={<AppleIcon />} />
-        </div>
-
         <p className="text-center text-[13px] text-slate-500 mt-6">
           Don&apos;t have an account?{" "}
           <button
@@ -208,17 +195,6 @@ function Field({
   );
 }
 
-function SocialButton({ label, icon }) {
-  return (
-    <button
-      type="button"
-      className="flex items-center justify-center gap-2 rounded-xl border border-ink-900/10 bg-white/80 py-3 text-[14px] font-medium text-ink-900 shadow-[var(--shadow-card)] transition-all hover:border-gold-500/40 hover:bg-white active:scale-[0.98]"
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
 
 /* --- inline icons (no external icon package needed yet) --- */
 
@@ -287,21 +263,3 @@ function EyeIcon({ open }) {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.24 1.3-1.7 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.9 3.1 14.7 2 12 2 6.9 2 2.8 6.1 2.8 11.2S6.9 20.4 12 20.4c6.9 0 9.4-4.9 9.4-7.9 0-.5-.05-.9-.13-1.3H12z"
-      />
-    </svg>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-ink-900">
-      <path d="M16.4 1.3c.1 1-.3 2-1 2.8-.6.8-1.7 1.4-2.7 1.3-.1-1 .4-2 1-2.7.7-.8 1.8-1.4 2.7-1.4zM19.9 17c-.5 1.2-.8 1.7-1.5 2.7-1 1.4-2.3 3.2-4 3.2-1.5 0-1.9-1-3.9-1s-2.5 1-4 1c-1.7 0-3-1.6-4-3-2.3-3.4-2.5-7.3-1.1-9.4.9-1.5 2.4-2.4 3.9-2.4 1.5 0 2.5 1 3.8 1 1.2 0 2-1 3.9-1 1.4 0 2.9.8 3.9 2.1-3.4 1.9-2.9 6.7 1 7.8z" />
-    </svg>
-  );
-}

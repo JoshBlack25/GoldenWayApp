@@ -23,10 +23,10 @@ export default function StaffLayout() {
       <header className="shrink-0 glass flex items-center justify-between px-5 pt-4 pb-3 z-10">
         <StaffAvatar user={user} />
         <div className="flex flex-col items-center leading-none">
-          <span className="font-display text-[17px] font-bold tracking-tight bg-gradient-to-r from-gold-600 via-gold-500 to-gold-600 bg-clip-text text-transparent">
+          <span className="font-display text-[17px] font-bold tracking-tight text-gold-600">
             GoldenWay
           </span>
-          <span className="text-[8px] tracking-[0.3em] text-ink-900/45 font-semibold mt-1">
+          <span className="text-[10px] tracking-[0.2em] text-ink-900/45 font-semibold mt-1">
             STAFF CONSOLE
           </span>
         </div>

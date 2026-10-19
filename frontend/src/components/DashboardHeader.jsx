@@ -30,16 +30,8 @@ export default function DashboardHeader() {
         to="/home"
         className="font-display text-[17px] font-bold tracking-tight flex flex-col items-center leading-none"
       >
-        <span
-          className="bg-clip-text text-transparent"
-          style={{
-            backgroundImage:
-              "linear-gradient(90deg, #8a6112 0%, #c58f1a 50%, #8a6112 100%)",
-          }}
-        >
-          GoldenWay
-        </span>
-        <span className="text-[9px] tracking-[0.3em] text-ink-900/60 font-semibold mt-1">
+        <span className="text-gold-600">GoldenWay</span>
+        <span className="text-[10px] tracking-[0.22em] text-ink-900/50 font-semibold mt-1">
           THE BUS FOR US
         </span>
       </Link>

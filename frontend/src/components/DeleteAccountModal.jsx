@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
 
@@ -11,8 +12,6 @@ export default function DeleteAccountModal({ isOpen, onClose }) {
   const [error, setError] = useState(null);
   const [confirmationText, setConfirmationText] = useState("");
   const [password, setPassword] = useState("");
-
-  if (!isOpen) return null;
 
   const canDelete =
     confirmationText.trim().toLowerCase() === PHRASE && password.length > 0;
@@ -39,7 +38,9 @@ export default function DeleteAccountModal({ isOpen, onClose }) {
     onClose();
   }
 
-  return (
+  if (!isOpen) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end bg-black/40"
       role="dialog"
@@ -154,6 +155,7 @@ export default function DeleteAccountModal({ isOpen, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

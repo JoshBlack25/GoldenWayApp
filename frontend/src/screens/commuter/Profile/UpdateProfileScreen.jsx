@@ -196,12 +196,12 @@ function StepContactDetails({ form, onNext, onCancel }) {
               <span className="flex items-center gap-2.5 py-3.5 text-[14px] text-ink-900">
                 <PhoneIcon /> {form.phone}
               </span>
-              <span className="rounded-md bg-emerald-100 px-2 py-1 text-[9px] font-bold text-emerald-700">
+              <span className="rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-700">
                 VERIFIED
               </span>
             </div>
           </div>
-          <div className="rounded-xl border-l-4 border-gold-400 bg-cream-100 px-4 py-3 flex items-start gap-2.5">
+          <div className="rounded-xl border border-gold-400/40 bg-cream-100 px-4 py-3 flex items-start gap-2.5">
             <InfoIcon />
             <p className="text-[11px] text-slate-500 leading-relaxed">
               These details are used for e-tickets and emergency route updates.

@@ -46,7 +46,7 @@ export default function SplashScreen() {
           animate={{ y: [0, -8, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         />
-        <span className="font-display font-bold text-3xl tracking-tight bg-gradient-to-b from-ink-900 to-ink-700 bg-clip-text text-transparent leading-none">
+        <span className="font-display font-bold text-3xl tracking-tight text-ink-900 leading-none">
           GoldenWay
         </span>
         <span className="mt-2 text-[11px] font-semibold tracking-[0.22em] text-gold-600">

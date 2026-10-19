@@ -54,15 +54,16 @@ export default function HistoryScreen() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mt-4">
         <StatCard
-          label="MONTHLY TRIPS"
+          label="This month"
           value={String(monthlyTrips)}
-          border="border-l-2 border-l-gold-500"
+          sublabel="trips"
+          accent="text-gold-600"
         />
         <StatCard
-          label="TIME COMMUTING"
+          label="Time commuting"
           value={String(hoursCommuting)}
-          unit="HR"
-          border="border-l-2 border-l-teal-500"
+          unit="hr"
+          accent="text-teal-600"
         />
       </div>
 
@@ -121,18 +122,17 @@ export default function HistoryScreen() {
   );
 }
 
-function StatCard({ label, value, unit, border }) {
+function StatCard({ label, value, unit, sublabel, accent }) {
   return (
-    <div className={`rounded-xl bg-white border border-ink-900/5 ${border} px-4 py-3.5`}>
-      <p className="text-[10px] font-semibold tracking-wide text-slate-500">
-        {label}
-      </p>
-      <p className="font-display text-2xl font-bold text-ink-900 mt-1">
+    <div className="rounded-xl bg-white border border-ink-900/5 px-4 py-3.5">
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <p className={`font-display text-2xl font-bold mt-1 ${accent || "text-ink-900"}`}>
         {value}
         {unit && (
-          <span className="ml-1 text-[11px] font-semibold text-teal-600">
-            {unit}
-          </span>
+          <span className="ml-1 text-[11px] font-semibold">{unit}</span>
+        )}
+        {sublabel && (
+          <span className="ml-1 text-[13px] font-medium text-ink-900/60">{sublabel}</span>
         )}
       </p>
     </div>
