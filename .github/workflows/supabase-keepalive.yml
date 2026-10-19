@@ -1,0 +1,33 @@
+name: Supabase keep-alive
+
+# Pings the GoldenWay Supabase database so the Free-plan project is never
+# considered inactive (it pauses after ~7 days of low activity).
+# Runs every 2 days at 06:00 UTC, and can be triggered manually.
+
+on:
+  schedule:
+    - cron: "0 6 */2 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          # A real read against a public table (routes is anon-readable via RLS),
+          # so it counts as database activity, not just an API ping.
+          status=$(curl -s -o response.json -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/routes?select=code&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "HTTP $status"
+          cat response.json
+          if [ "$status" -ne 200 ]; then
+            echo "Keep-alive ping failed" >&2
+            exit 1
+          fi
