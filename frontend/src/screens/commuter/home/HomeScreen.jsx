@@ -46,7 +46,7 @@ export default function HomeScreen() {
     unlimitedPass,
   } = useTrips();
   const [alerts, setAlerts] = useState([]);
-  const recent = transactions.slice(0, 3);
+  const recent = transactions.slice(0, 2);
   const myRouteCodes = useMemo(() => activeRouteCodes(card), [card]);
 
   useEffect(() => {
@@ -72,6 +72,7 @@ export default function HomeScreen() {
   );
 
   const [dismissed, setDismissed] = useState([]);
+  const [dismissError, setDismissError] = useState(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -91,12 +92,15 @@ export default function HomeScreen() {
 
   function handleDismiss(id) {
     setDismissed((d) => [...d, id]); // optimistic
-    dismissAlert(id).catch(() =>
+    setDismissError(null);
+    dismissAlert(id).catch(() => {
       setDismissed((d) => {
         const idx = d.lastIndexOf(id);
         return idx === -1 ? d : [...d.slice(0, idx), ...d.slice(idx + 1)];
-      }),
-    );
+      });
+      setDismissError(id);
+      setTimeout(() => setDismissError(null), 4000);
+    });
   }
 
   return (
@@ -113,37 +117,49 @@ export default function HomeScreen() {
 
       {/* Live service alerts that affect me */}
       {visibleAlerts.length > 0 && (
-        <div className="flex items-start gap-1 rounded-xl border border-brand-500/25 bg-brand-50 pl-4 pr-2 py-3">
-          <button
-            type="button"
-            onClick={() => navigate("/notifications")}
-            className="flex items-start gap-2.5 text-left min-w-0 flex-1"
-          >
-            <AlertIcon />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-bold tracking-wide text-brand-600">
-                SERVICE ALERT
-              </span>
-              <span className="block text-[12px] font-medium text-ink-900 truncate">
-                {visibleAlerts[0].title ||
-                  visibleAlerts[0].body ||
-                  "Service notice for your routes"}
-              </span>
-            </span>
-            {visibleAlerts.length > 1 && (
-              <span className="text-[11px] font-semibold text-brand-600 shrink-0">
-                +{visibleAlerts.length - 1}
-              </span>
-            )}
-          </button>
-          {visibleAlerts[0].severity !== "CRITICAL" && (
+        <div className="flex flex-col rounded-xl border border-brand-500/25 bg-brand-50 overflow-hidden">
+          <div className="flex items-start gap-1 pl-4 pr-2 py-3">
             <button
               type="button"
-              aria-label="Dismiss alert"
-              onClick={() => handleDismiss(visibleAlerts[0].id)}
-              className="shrink-0 h-9 w-9 -my-1 rounded-full text-ink-900/50 hover:text-ink-900"
+              onClick={() => navigate("/notifications")}
+              className="flex items-start gap-2.5 text-left min-w-0 flex-1"
             >
-              ✕
+              <AlertIcon />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold text-brand-600">
+                  Service alert
+                </span>
+                <span className="block text-[12px] font-medium text-ink-900 truncate">
+                  {visibleAlerts[0].title ||
+                    visibleAlerts[0].body ||
+                    "Service notice for your routes"}
+                </span>
+              </span>
+              {visibleAlerts.length > 1 && (
+                <span className="text-[11px] font-semibold text-brand-600 shrink-0">
+                  +{visibleAlerts.length - 1}
+                </span>
+              )}
+            </button>
+            {visibleAlerts[0].severity !== "CRITICAL" && (
+              <button
+                type="button"
+                aria-label="Dismiss alert"
+                onClick={() => handleDismiss(visibleAlerts[0].id)}
+                className="shrink-0 h-9 w-9 -my-1 rounded-full text-ink-900/50 hover:text-ink-900"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {dismissError === visibleAlerts[0].id && (
+            <button
+              type="button"
+              onClick={() => handleDismiss(visibleAlerts[0].id)}
+              className="border-t border-brand-500/20 px-4 py-2 text-left text-[11px] font-medium text-brand-700"
+              aria-live="polite"
+            >
+              Couldn't dismiss — tap to retry
             </button>
           )}
         </div>
@@ -222,38 +238,6 @@ export default function HomeScreen() {
         onOpenAll={() => navigate("/routes")}
         onOpenRoute={(code) => navigate(`/routes/${code}`)}
       />
-
-      {/* Gold card */}
-      <div className="card px-4 py-4 flex items-center gap-3">
-        <span
-          className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
-          style={{
-            background: "linear-gradient(135deg, #ffd873, #f0b429)",
-            boxShadow: "var(--shadow-glow-gold)",
-            color: "var(--color-ink-900)",
-          }}
-        >
-          <BusIcon />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold tracking-wide text-gold-600">
-            YOUR GOLD CARD
-          </p>
-          <p className="font-display text-[16px] font-bold text-ink-900 leading-tight truncate">
-            {card ? `${card.cardNumber.slice(0, 8)}••••` : "GW-••••-••••"}
-          </p>
-          <p className="text-[12px] text-slate-500 mt-0.5">
-            Balance protected · free transfers included
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate("/card")}
-          className="link-action text-[12px] font-semibold text-gold-600 shrink-0"
-        >
-          View
-        </button>
-      </div>
 
       {/* Quick actions */}
       <div>

@@ -46,6 +46,7 @@ export default function UseTicketScreen() {
   const [routeCode, setRouteCode] = useState("");
   const [routes, setRoutes] = useState([]);
   const [tapping, setTapping] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [lastRoute] = useState(readLastRoute);
 
@@ -87,8 +88,14 @@ export default function UseTicketScreen() {
     [routes, chosenCode],
   );
 
-  async function confirmTap() {
+  function requestTap() {
     if (!selectedRoute || tapping) return;
+    setConfirming(true);
+  }
+
+  async function executeTap() {
+    if (!selectedRoute || tapping) return;
+    setConfirming(false);
     setTapping(true);
     setError("");
     try {
@@ -154,9 +161,9 @@ export default function UseTicketScreen() {
         <div className="w-full flex flex-col gap-1.5">
           <label
             htmlFor="tap-route"
-            className="text-[11px] font-semibold tracking-wide text-slate-500"
+            className="text-[13px] font-medium text-ink-700"
           >
-            BOARDING ROUTE
+            Boarding route
           </label>
           <div className="field-shell">
             <PinIcon />
@@ -236,11 +243,57 @@ export default function UseTicketScreen() {
           whileTap={{ scale: 0.97 }}
           type="button"
           disabled={!selectedRoute || tapping}
-          onClick={confirmTap}
+          onClick={requestTap}
           className="btn-gold mt-2 w-full py-4 text-[15px] disabled:opacity-40"
         >
           {tapping ? "Validating…" : "Tap to Validate"}
         </motion.button>
+      )}
+
+      {/* Confirmation sheet — shown before any journey is deducted */}
+      {confirming && selectedRoute && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/40"
+          onClick={() => setConfirming(false)}
+        >
+          <div
+            className="w-full rounded-t-3xl bg-white p-5 pb-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-center text-[12px] text-slate-500 mb-1">
+              Boarding{" "}
+              <span className="font-semibold text-ink-900">
+                {selectedRoute.code}
+              </span>
+            </p>
+            <h2 className="font-display text-[20px] font-bold text-ink-900 text-center leading-snug mb-1">
+              {unlimitedPass ? "Unlimited ride ready" : "1 journey will be deducted"}
+            </h2>
+            <p className="text-center text-[12px] text-slate-500 mb-6">
+              {selectedRoute.label ||
+                [selectedRoute.from, selectedRoute.to]
+                  .filter(Boolean)
+                  .join(" → ")}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-3.5 text-[14px] font-semibold text-ink-900 hover:bg-slate-50"
+              >
+                Go back
+              </button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                onClick={executeTap}
+                className="flex-1 btn-gold py-3.5 text-[14px]"
+              >
+                Confirm tap
+              </motion.button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="card w-full mt-4 px-4 py-3.5 flex items-start gap-3">

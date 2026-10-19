@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
         <div className="mt-6 flex flex-col gap-2.5 pb-10">
           {notifications.length === 0 && (
             <div className="rounded-2xl border border-dashed border-ink-900/10 bg-white/60 py-12 text-center">
-              <p className="text-3xl mb-2">🔔</p>
+              <p aria-hidden="true" className="text-3xl mb-2">🔔</p>
               <p className="text-[13px] text-slate-500">
                 Notifications about top-ups, journeys, delays and tickets land
                 here.
@@ -87,6 +87,7 @@ export default function NotificationsScreen() {
                 }`}
               >
                 <span
+                  aria-hidden="true"
                   className={`h-10 w-10 shrink-0 rounded-xl border flex items-center justify-center text-[16px] ${n.readAt ? "border-ink-900/10 bg-ink-900/5" : style.ring}`}
                 >
                   {style.icon}
