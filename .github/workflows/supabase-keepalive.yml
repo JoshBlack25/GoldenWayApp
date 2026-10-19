@@ -24,10 +24,14 @@ jobs:
           status=$(curl -s -o response.json -w "%{http_code}" \
             "$SUPABASE_URL/rest/v1/routes?select=code&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY") || true
           echo "HTTP $status"
+          if [ -z "$status" ]; then
+            echo "curl failed to connect to Supabase" >&2
+            exit 1
+          fi
           cat response.json
           if [ "$status" -ne 200 ]; then
-            echo "Keep-alive ping failed" >&2
+            echo "Keep-alive ping failed (HTTP $status)" >&2
             exit 1
           fi

@@ -24,6 +24,7 @@ export default function DeleteAccountModal({ isOpen, onClose }) {
     try {
       await deleteAccount(password);
       navigate("/login", { replace: true });
+      setIsDeleting(false);
     } catch (err) {
       setError(err?.message || "Failed to delete account. Please try again.");
       setIsDeleting(false);
@@ -108,6 +109,7 @@ export default function DeleteAccountModal({ isOpen, onClose }) {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleDelete()}
               disabled={isDeleting}
               className="w-full rounded-xl border border-slate-300 px-4 py-3 text-[13px] text-ink-900 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
             />
@@ -126,6 +128,7 @@ export default function DeleteAccountModal({ isOpen, onClose }) {
               placeholder={PHRASE}
               value={confirmationText}
               onChange={(e) => setConfirmationText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleDelete()}
               disabled={isDeleting}
               className="w-full rounded-xl border border-slate-300 px-4 py-3 text-[13px] text-ink-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
             />

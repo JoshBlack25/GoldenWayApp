@@ -74,10 +74,11 @@ export default function HomeScreen() {
   const [dismissed, setDismissed] = useState([]);
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchDismissedAlertIds()
       .then(setDismissed)
       .catch(() => {});
-  }, []);
+  }, [user?.id]);
 
   // CRITICAL alerts (breakdowns) can't be hidden.
   const visibleAlerts = useMemo(
@@ -91,7 +92,10 @@ export default function HomeScreen() {
   function handleDismiss(id) {
     setDismissed((d) => [...d, id]); // optimistic
     dismissAlert(id).catch(() =>
-      setDismissed((d) => d.filter((x) => x !== id)),
+      setDismissed((d) => {
+        const idx = d.lastIndexOf(id);
+        return idx === -1 ? d : [...d.slice(0, idx), ...d.slice(idx + 1)];
+      }),
     );
   }
 

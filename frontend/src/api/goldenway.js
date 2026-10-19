@@ -435,10 +435,10 @@ export async function deleteMyAccount(password) {
     email: session.user.email,
     password,
   });
-  if (reauth) throw new ApiError(401, { error: "Password is incorrect" });
+  if (reauth) throw toApiError(reauth, 401);
 
   await rpc("delete_my_account", {});
-  await supabase.auth.signOut({ scope: "local" }); // server session is already gone
+  await supabase.auth.signOut({ scope: "global" });
 }
 
 export async function fetchDismissedAlertIds() {
